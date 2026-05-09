@@ -62,9 +62,8 @@ impl Dynamics {
                 }
                 "IMU_angular_rate" => {
                     for (_, sig) in parsed.decoded.signals.iter() {
-                        match sig.name.as_str() {
-                            "Z_axis" => self.yaw_rate_rads = sig.value.physical as f32,
-                            _ => {}
+                        if sig.name.as_str() == "Z_axis" {
+                            self.yaw_rate_rads = sig.value.physical.to_radians() as f32
                         }
                     }
                     self.last_update = Instant::now();
