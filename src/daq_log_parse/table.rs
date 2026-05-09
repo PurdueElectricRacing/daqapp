@@ -1,4 +1,4 @@
-use crate::daq_log_parse::{consts, correlate};
+use crate::daq_log_parse::{consts, parse, correlate};
 use can_decode::DecodedSignalValue;
 
 pub struct TableBuilder {
