@@ -58,3 +58,9 @@ impl CanBusSpeed {
         vec![CanBusSpeed::Kbps250, CanBusSpeed::Kbps500]
     }
 }
+
+impl Default for CanBusSpeed {
+    fn default() -> Self {
+        CanBusSpeed::Kbps500
+    }
+}

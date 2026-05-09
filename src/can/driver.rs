@@ -37,6 +37,8 @@ pub trait Driver {
 
     fn is_connected(&self) -> bool;
 
+    fn bus_speed(&self) -> Option<CanBusSpeed>;
+
     fn close(&mut self) -> DriverResult<()>;
 }
 
@@ -44,6 +46,7 @@ pub trait Driver {
 pub struct SerialDriver {
     socket: CanSocket<Box<dyn SerialPort>>,
     connected: bool,
+    bus_speed: CanBusSpeed,
 }
 
 impl SerialDriver {
@@ -71,6 +74,7 @@ impl SerialDriver {
         Ok(Self {
             socket,
             connected: true,
+            bus_speed: speed,
         })
     }
 }
@@ -113,6 +117,10 @@ impl Driver for SerialDriver {
 
     fn is_connected(&self) -> bool {
         self.connected
+    }
+
+    fn bus_speed(&self) -> Option<CanBusSpeed> {
+        Some(self.bus_speed)
     }
 
     fn close(&mut self) -> DriverResult<()> {
@@ -186,6 +194,10 @@ impl Driver for UdpDriver {
 
     fn is_connected(&self) -> bool {
         self.connected
+    }
+
+    fn bus_speed(&self) -> Option<CanBusSpeed> {
+        None
     }
 
     fn close(&mut self) -> DriverResult<()> {
@@ -273,6 +285,10 @@ impl Driver for SimulatedDriver {
         self.connected
     }
 
+    fn bus_speed(&self) -> Option<CanBusSpeed> {
+        None
+    }
+
     fn close(&mut self) -> DriverResult<()> {
         self.connected = false;
         Ok(())
@@ -323,6 +339,10 @@ impl Driver for LoopbackDriver {
         self.connected
     }
 
+    fn bus_speed(&self) -> Option<CanBusSpeed> {
+        None
+    }
+
     fn close(&mut self) -> DriverResult<()> {
         self.connected = false;
         self.queued_frames.clear();
@@ -339,7 +359,7 @@ pub fn parse_udp_buffer(
             "Received packet too small: {} bytes",
             num_bytes
         ))));
-    } else if num_bytes % UDP_RAW_FRAME_SIZE != 0 {
+    } else if !num_bytes.is_multiple_of(UDP_RAW_FRAME_SIZE) {
         log::warn!(
             "Received packet of size {} which is not a multiple of raw frame size {}; some data may be ignored",
             num_bytes,
