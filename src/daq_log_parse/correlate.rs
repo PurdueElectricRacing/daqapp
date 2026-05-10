@@ -24,7 +24,7 @@ pub struct CorrelationChunkResult {
 pub fn time_correlate_chunks(chunks: Vec<Vec<ParsedMessage>>) -> Vec<CorrelationChunkResult> {
     chunks
         .into_iter()
-        .map(|chunk| time_correlate_chunk(chunk))
+        .map(time_correlate_chunk)
         .collect()
 }
 
@@ -109,6 +109,15 @@ pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelationChunkResult
                         date.and_hms_milli_opt(h as u32, min as u32, s as u32, ms as u32)
                     })
                 {
+                    let current_year = chrono::Local::now().year_ce().1 as i32;
+                    if full_year < current_year - 1 || full_year > current_year + 1 {
+                        log::warn!(
+                            "GPS message at {} ms has suspicious year value {}, skipping",
+                            msg.timestamp, full_year
+                        );
+                        continue;
+                    }
+
                     let dt_local = chrono::Local.from_local_datetime(&dt).unwrap();
                     gps_points.push((msg.timestamp, dt_local));
                 } else {
