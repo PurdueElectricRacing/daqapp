@@ -1,16 +1,20 @@
-use std::ops::Sub;
+use std::ops::Sub as _;
+use chrono::TimeZone as _;
 
 use crate::daq_log_parse::parse::ParsedMessage;
-use chrono::TimeZone;
 
-pub struct TimeAdjustedMessage {
-    pub parsed_message: ParsedMessage,
-    pub real_timestamp: chrono::DateTime<chrono::Local>,
+
+pub struct CorrelationFunction {
+	ref_real_ts: chrono::DateTime<chrono::Local>,
+	ref_log_ts: u32,
+	avg_offset: chrono::Duration,
 }
-
-pub enum CorrelatedParsedMessages {
-    TimeAdjusted(Vec<TimeAdjustedMessage>),
-    Unadjusted(Vec<ParsedMessage>),
+impl CorrelationFunction {
+	pub fn correlate(&self, log_ts: u64) -> chrono::DateTime<chrono::Local> {
+		self.ref_real_ts
+			+ chrono::Duration::milliseconds(log_ts as i64 - self.ref_log_ts as i64)
+			+ self.avg_offset
+	}
 }
 
 pub fn sig_to_value(dsv: &can_decode::DecodedSignalValue) -> u64 {
@@ -20,7 +24,7 @@ pub fn sig_to_value(dsv: &can_decode::DecodedSignalValue) -> u64 {
     }
 }
 
-pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelatedParsedMessages {
+pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> Option<CorrelationFunction> {
     // Idea: in the chunk, look for GPS messages which have both a timestamp and a corresponding real time
     // Use those to create a mapping from the log's timestamps to real time, and use that mapping to convert
     // all messages in the chunk to have real timestamps.
@@ -98,7 +102,7 @@ pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelatedParsedMessag
 
     if gps_points.is_empty() {
         // No GPS points found, can't correlate
-        return CorrelatedParsedMessages::Unadjusted(chunk);
+        return None;
     }
 
     // Attempt to correlate. Use the first GPS point as a reference, and calculate the offset for
@@ -124,7 +128,7 @@ pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelatedParsedMessag
             max_offset,
             min_offset
         );
-        return CorrelatedParsedMessages::Unadjusted(chunk);
+        return None;
     }
 
     // Use the average offset for correlation
@@ -133,15 +137,9 @@ pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelatedParsedMessag
         .fold(chrono::Duration::zero(), |acc, x| acc + *x)
         / (offsets.len() as i32);
 
-    let time_adjusted_messages = chunk
-        .into_iter()
-        .map(|msg| TimeAdjustedMessage {
-            real_timestamp: ref_real_ts
-                + chrono::Duration::milliseconds(msg.timestamp as i64 - ref_log_ts as i64)
-                + avg_offset,
-            parsed_message: msg,
-        })
-        .collect();
-
-    CorrelatedParsedMessages::TimeAdjusted(time_adjusted_messages)
+    Some(CorrelationFunction {
+		ref_real_ts,
+		ref_log_ts,
+		avg_offset,
+	})
 }
