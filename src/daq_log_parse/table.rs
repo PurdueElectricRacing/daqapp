@@ -107,7 +107,16 @@ impl TableBuilder {
                     }
                 }
             }
-            let out_file = out_folder.join(format!("out_{:03}.csv", chunk_idx));
+
+            let first_correlated_time: Option<String> = chunk
+                .correlation_fn
+                .as_ref()
+                .and_then(|cf| cf.correlate(first_time).format("%Y_%m_%d_%H_%M_%S%.3f").to_string().parse().ok());
+
+            let out_file = match first_correlated_time {
+                Some(t) => out_folder.join(format!("out_{:03}_{}.csv", chunk_idx, t)),
+                None => out_folder.join(format!("out_{:03}.csv", chunk_idx)),
+            };
             let mut wtr = csv::Writer::from_path(out_file).unwrap();
             for row in csv_table {
                 wtr.write_record(&row).unwrap();
