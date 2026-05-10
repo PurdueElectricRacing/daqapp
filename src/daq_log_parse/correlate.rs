@@ -102,8 +102,9 @@ pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelationChunkResult
             if let (Some(ms), Some(s), Some(min), Some(h), Some(d), Some(mon), Some(y)) =
                 (millisecond, second, minute, hour, day, month, year)
             {
+                let full_year = if y < 100 { 2000 + y as i32 } else { y as i32 };
                 // Construct a chrono::DateTime from the extracted values
-                if let Some(dt) = chrono::NaiveDate::from_ymd_opt(y as i32, mon as u32, d as u32)
+                if let Some(dt) = chrono::NaiveDate::from_ymd_opt(full_year, mon as u32, d as u32)
                     .and_then(|date| {
                         date.and_hms_milli_opt(h as u32, min as u32, s as u32, ms as u32)
                     })
