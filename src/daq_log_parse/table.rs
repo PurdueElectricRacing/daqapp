@@ -114,7 +114,7 @@ impl TableBuilder {
             let first_correlated_time: Option<String> =
                 chunk.correlation_fn.as_ref().and_then(|cf| {
                     cf.correlate(first_time)
-                        .format("%Y_%m_%d_%H_%M_%S%.3f")
+                        .format("%H_%M_%S%.3f")
                         .to_string()
                         .parse()
                         .ok()
