@@ -14,15 +14,14 @@ pub struct TableBuilder {
 
 impl TableBuilder {
     pub fn new() -> Self {
-        let mut tb = Self {
+        Self {
             bus_row: vec!["".to_string(), "Bus".to_string()],
             node_row: vec!["".to_string(), "Node".to_string()],
             message_row: vec!["".to_string(), "Message".to_string()],
             signal_row: vec!["".to_string(), "Signal".to_string()],
             next_col_idx: 2, // real time and then daq time columns
             indexer: std::collections::HashMap::new(),
-        };
-        tb
+        }
     }
 
     pub fn create_header(&mut self, parser: &can_decode::Parser, bus_name: &str) {
