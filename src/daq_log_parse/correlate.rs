@@ -1,18 +1,24 @@
 use chrono::TimeZone as _;
-use std::ops::Sub as _;
+use chrono::Datelike as _;
 
 use crate::daq_log_parse::parse::ParsedMessage;
 
 pub struct CorrelationFunction {
-    ref_real_ts: chrono::DateTime<chrono::Local>,
-    ref_log_ts: u32,
-    avg_offset: chrono::Duration,
+    /// real_time ~= slope * log_time_ms + intercept_ms
+    ///
+    /// Stored as:
+    /// unix_ms = slope * log_ts_ms + intercept_ms
+    slope: f64,
+    intercept_ms: f64,
 }
+
 impl CorrelationFunction {
     pub fn correlate(&self, log_ts: u32) -> chrono::DateTime<chrono::Local> {
-        self.ref_real_ts
-            + chrono::Duration::milliseconds(log_ts as i64 - self.ref_log_ts as i64)
-            + self.avg_offset
+        let unix_ms = self.slope * log_ts as f64 + self.intercept_ms;
+
+        chrono::DateTime::from_timestamp_millis(unix_ms.round() as i64)
+            .unwrap()
+            .with_timezone(&chrono::Local)
     }
 }
 
@@ -109,17 +115,24 @@ pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelationChunkResult
                         date.and_hms_milli_opt(h as u32, min as u32, s as u32, ms as u32)
                     })
                 {
-                    let current_year = chrono::Local::now().year_ce().1 as i32;
-                    if full_year < current_year - 1 || full_year > current_year + 1 {
+                    let dt_utc = chrono::Utc.from_utc_datetime(&dt);
+                    let dt_local = chrono::DateTime::<chrono::Local>::from(dt_utc);
+
+                    let current_year = chrono::Local::now().year();
+                    if dt_local.year() < current_year - 1 || dt_local.year() > current_year + 1 {
                         log::warn!(
                             "GPS message at {} ms has suspicious year value {}, skipping",
-                            msg.timestamp, full_year
+                            msg.timestamp, dt_local.year()
                         );
                         continue;
                     }
 
-                    let dt_local = chrono::Local.from_local_datetime(&dt).unwrap();
                     gps_points.push((msg.timestamp, dt_local));
+                    println!(
+                        "Found GPS point: log timestamp = {} ms, real timestamp = {}",
+                        msg.timestamp,
+                        dt_local.format("%Y-%m-%d %H:%M:%S%.3f")
+                    );
                 } else {
                     log::error!(
                         "GPS message at {} ms has invalid date/time values, skipping",
@@ -142,44 +155,91 @@ pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelationChunkResult
         return CorrelationChunkResult::uncorrelated_new(chunk);
     }
 
-    // Attempt to correlate. Use the first GPS point as a reference, and calculate the offset for
-    // each subsequent GPS point. If the offsets are consistent-ish, we can assume a linear
-    // correlation and adjust all timestamps accordingly. If the offsets are wildly inconsistent,
-    // give up on correlation.
-    let (ref_log_ts, ref_real_ts) = gps_points[0];
-    let mut offsets = Vec::new();
-    for (log_ts, real_ts) in &gps_points[1..] {
-        let offset = *real_ts
-            - chrono::Duration::milliseconds(*log_ts as i64)
-            - (ref_real_ts - chrono::Duration::milliseconds(ref_log_ts as i64));
-        offsets.push(offset);
-    }
-
-    // Check if offsets are consistent (within 20 ms of each other)
-    let zero = chrono::Duration::zero();
-    let max_offset = offsets.iter().max().unwrap_or(&zero);
-    let min_offset = offsets.iter().min().unwrap_or(&zero);
-    if max_offset.sub(*min_offset) > chrono::Duration::milliseconds(20) {
-        log::error!(
-            "Offsets between GPS points are inconsistent (max: {:?}, min: {:?}), giving up on correlation",
-            max_offset,
-            min_offset
-        );
-        return CorrelationChunkResult::uncorrelated_new(chunk);
-    }
-
-    // Use the average offset for correlation
-    let avg_offset = offsets
+    let points: Vec<Point> = gps_points
         .iter()
-        .fold(chrono::Duration::zero(), |acc, x| acc + *x)
-        / (offsets.len() as i32);
+        .map(|(log_ts, real_ts)| Point {
+            x: *log_ts as f64,
+            y: real_ts.timestamp_millis() as f64,
+        })
+        .collect();
+    let (slope, intercept) = match linear_regression(&points) {
+        Some(v) => v,
+        None => {
+            log::error!("Failed to refit correlation line");
+            return CorrelationChunkResult::uncorrelated_new(chunk);
+        }
+    };
+
+        let rms_error_ms = {
+        let mse = points
+            .iter()
+            .map(|p| {
+                let predicted = slope * p.x + intercept;
+                let error = p.y - predicted;
+                error * error
+            })
+            .sum::<f64>()
+            / points.len() as f64;
+
+        mse.sqrt()
+    };
+
+    log::info!(
+        "GPS correlation successful: slope={:.9}, intercept_ms={:.3}, rms_error_ms={:.2}, points={}",
+        slope,
+        intercept,
+        rms_error_ms,
+        points.len()
+    );
+
 
     CorrelationChunkResult::correlated_new(
         chunk,
         CorrelationFunction {
-            ref_real_ts,
-            ref_log_ts,
-            avg_offset,
+            slope,
+            intercept_ms: intercept,
         },
     )
+}
+
+
+struct Point {
+    x: f64, // log timestamp ms
+    y: f64, // unix timestamp ms
+}
+
+/// Least squares linear regression.
+///
+/// Fits:
+///
+/// y = slope * x + intercept
+fn linear_regression(points: &[Point]) -> Option<(f64, f64)> {
+    if points.len() < 2 {
+        return None;
+    }
+
+    let n = points.len() as f64;
+
+    let mut sum_x = 0.0;
+    let mut sum_y = 0.0;
+    let mut sum_xy = 0.0;
+    let mut sum_x2 = 0.0;
+
+    for p in points {
+        sum_x += p.x;
+        sum_y += p.y;
+        sum_xy += p.x * p.y;
+        sum_x2 += p.x * p.x;
+    }
+
+    let denom = n * sum_x2 - sum_x * sum_x;
+
+    if denom.abs() < 1e-9 {
+        return None;
+    }
+
+    let slope = (n * sum_xy - sum_x * sum_y) / denom;
+    let intercept = (sum_y - slope * sum_x) / n;
+
+    Some((slope, intercept))
 }
