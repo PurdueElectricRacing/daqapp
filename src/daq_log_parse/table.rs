@@ -84,7 +84,7 @@ impl TableBuilder {
                 let correlated_time = chunk
                     .correlation_fn
                     .as_ref()
-                    .map(|cf| cf.correlate(row_time));
+                    .and_then(|cf| cf.correlate(row_time));
                 if let Some(ct) = correlated_time {
                     row[0] = ct.format("%H:%M:%S.%3f").to_string();
                 }
@@ -113,10 +113,7 @@ impl TableBuilder {
             let first_correlated_time: Option<String> =
                 chunk.correlation_fn.as_ref().and_then(|cf| {
                     cf.correlate(first_time)
-                        .format("%Y_%m_%d__%H_%M_%S")
-                        .to_string()
-                        .parse()
-                        .ok()
+                        .map(|dt| dt.format("%Y_%m_%d__%H_%M_%S").to_string())
                 });
 
             let out_file = match first_correlated_time {

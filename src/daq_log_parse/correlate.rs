@@ -13,12 +13,20 @@ pub struct CorrelationFunction {
 }
 
 impl CorrelationFunction {
-    pub fn correlate(&self, log_ts: u32) -> chrono::DateTime<chrono::Local> {
+    pub fn correlate(&self, log_ts: u32) -> Option<chrono::DateTime<chrono::Local>> {
         let unix_ms = self.slope * log_ts as f64 + self.intercept_ms;
 
-        chrono::DateTime::from_timestamp_millis(unix_ms.round() as i64)
-            .unwrap()
-            .with_timezone(&chrono::Local)
+        match chrono::DateTime::from_timestamp_millis(unix_ms.round() as i64) {
+            Some(dt) => Some(dt.with_timezone(&chrono::Local)),
+            None => {
+                log::error!(
+                    "Correlated time {} ms for log time {} ms is out of range for chrono::DateTime",
+                    unix_ms,
+                    log_ts
+                );
+                None
+            }
+        }
     }
 }
 
