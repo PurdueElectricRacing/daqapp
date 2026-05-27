@@ -55,7 +55,7 @@ impl CorrelationChunkResult {
     }
 }
 
-pub fn sig_to_value(dsv: &can_decode::DecodedSignalValue) -> u64 {
+pub fn physical_to_u64(dsv: &can_decode::DecodedSignalValue) -> u64 {
     dsv.physical.round() as u64
 }
 
@@ -74,37 +74,37 @@ pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelationChunkResult
                 .decoded
                 .signals
                 .get("millisecond")
-                .map(|sig| sig_to_value(&sig.value));
+                .map(|sig| physical_to_u64(&sig.value));
             let second = msg
                 .decoded
                 .signals
                 .get("second")
-                .map(|sig| sig_to_value(&sig.value));
+                .map(|sig| physical_to_u64(&sig.value));
             let minute = msg
                 .decoded
                 .signals
                 .get("minute")
-                .map(|sig| sig_to_value(&sig.value));
+                .map(|sig| physical_to_u64(&sig.value));
             let hour = msg
                 .decoded
                 .signals
                 .get("hour")
-                .map(|sig| sig_to_value(&sig.value));
+                .map(|sig| physical_to_u64(&sig.value));
             let day = msg
                 .decoded
                 .signals
                 .get("day")
-                .map(|sig| sig_to_value(&sig.value));
+                .map(|sig| physical_to_u64(&sig.value));
             let month = msg
                 .decoded
                 .signals
                 .get("month")
-                .map(|sig| sig_to_value(&sig.value));
+                .map(|sig| physical_to_u64(&sig.value));
             let year = msg
                 .decoded
                 .signals
                 .get("year")
-                .map(|sig| sig_to_value(&sig.value));
+                .map(|sig| physical_to_u64(&sig.value));
 
             if let (Some(ms), Some(s), Some(min), Some(h), Some(d), Some(mon), Some(y)) =
                 (millisecond, second, minute, hour, day, month, year)
