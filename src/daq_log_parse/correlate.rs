@@ -66,9 +66,8 @@ pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelationChunkResult
     // Idea: in the chunk, look for GPS messages which have both a timestamp and a corresponding real time
     // Use those to create a mapping from the log's timestamps to real time, and use that mapping to convert
     // all messages in the chunk to have real timestamps.
-    // If the correlation is successful, we return the time-adjusted messages.
-    // If we can't find any GPS messages, or if the correlation fails for some reason, we return the
-    // original messages without time adjustment.
+    // If the correlation is successful, we return the orginal messages along with a correlation function.
+    // If we can't find any GPS messages, or if the correlation fails, return just the original messages.
 
     // First, find all GPS messages and extract their timestamps and real times
     let mut gps_points = Vec::new();
@@ -156,6 +155,7 @@ pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelationChunkResult
         return CorrelationChunkResult::uncorrelated_new(chunk);
     }
 
+    // Attempt to fit a line to the GPS points to find the correlation function
     let points: Vec<Point> = gps_points
         .iter()
         .map(|(log_ts, real_ts)| Point {
@@ -171,6 +171,7 @@ pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelationChunkResult
         }
     };
 
+    // Print debug info about the correlation quality
     let rms_error_ms = {
         let mse = points
             .iter()
@@ -184,7 +185,6 @@ pub fn time_correlate_chunk(chunk: Vec<ParsedMessage>) -> CorrelationChunkResult
 
         mse.sqrt()
     };
-
     log::info!(
         "GPS correlation successful: slope={:.9}, intercept_ms={:.3}, rms_error_ms={:.2}, points={}",
         slope,
