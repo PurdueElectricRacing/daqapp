@@ -108,7 +108,7 @@ impl ViewerTable {
                                 if let Some(ref enum_label) = signal.value.enum_label {
                                     (
                                         sig_name.as_str(),
-                                        format!("{} ({:0.2})", enum_label, signal.value.physical),
+                                        format!("{} ({:.2})", enum_label, signal.value.physical),
                                     )
                                 } else if signal.unit.is_empty() {
                                     (sig_name.as_str(), format!("{:.2}", signal.value.physical))
