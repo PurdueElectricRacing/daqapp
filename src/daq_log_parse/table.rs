@@ -104,7 +104,11 @@ impl TableBuilder {
                         if let Some(row) = csv_table.get_mut(row_idx as usize + 4)
                             && let Some(cell) = row.get_mut(col_idx)
                         {
-                            *cell = sig_value.value.physical.to_string();
+                            *cell = if let Some(enum_label) = &sig_value.value.enum_label {
+                                enum_label.clone()
+                            } else {
+                                sig_value.value.physical.to_string()
+                            };
                         }
                     }
                 }
