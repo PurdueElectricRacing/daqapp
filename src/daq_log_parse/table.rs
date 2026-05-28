@@ -57,6 +57,10 @@ impl TableBuilder {
         }
     }
 
+    fn row_width(&self) -> usize {
+        HEADER_COLUMMN_COUNT + self.header_columns.len()
+    }
+
     fn push_column(&mut self, key: (String, String, String), column: TableColumn) {
         self.indexer.insert(key, self.next_col_idx);
         self.header_columns.push(column);
@@ -143,52 +147,12 @@ impl TableBuilder {
         std::fs::create_dir_all(out_folder).unwrap();
 
         for (chunk_idx, chunk) in correlated_chunks.iter().enumerate() {
-            let mut csv_table = self.build_header_rows();
-
             let first_time = chunk.parsed_msgs.first().map(|m| m.timestamp).unwrap_or(0);
             let last_time = chunk.parsed_msgs.last().map(|m| m.timestamp).unwrap_or(0);
 
             let first_row_time = (first_time / consts::BIN_WIDTH_MS) * consts::BIN_WIDTH_MS;
             let last_row_time = last_time.div_ceil(consts::BIN_WIDTH_MS) * consts::BIN_WIDTH_MS;
             let num_rows = ((last_row_time - first_row_time) / consts::BIN_WIDTH_MS) + 1;
-
-            csv_table.reserve(HEADER_ROW_COUNT + num_rows as usize);
-
-            for row_idx in 0..num_rows {
-                let row_time = first_row_time + row_idx * consts::BIN_WIDTH_MS;
-                let row_time_sec = row_time as f32 / 1000.0;
-                let mut row =
-                    vec!["".to_string(); HEADER_COLUMMN_COUNT - 1 + self.header_columns.len()];
-                let correlated_time = chunk
-                    .correlation_fn
-                    .as_ref()
-                    .and_then(|cf| cf.correlate(row_time));
-                if let Some(ct) = correlated_time {
-                    row[0] = ct.format("%H:%M:%S.%3f").to_string();
-                }
-                row[1] = format!("{:.3}", row_time_sec);
-                csv_table.push(row);
-            }
-
-            for msg in chunk.parsed_msgs.iter() {
-                let decoded = &msg.decoded;
-                for (sig_name, sig_value) in &decoded.signals {
-                    let key = (msg.bus_name.clone(), decoded.name.clone(), sig_name.clone());
-                    if let Some(&col_idx) = self.indexer.get(&key) {
-                        let row_idx =
-                            ((msg.timestamp - first_row_time) / consts::BIN_WIDTH_MS) as usize;
-                        if let Some(row) = csv_table.get_mut(HEADER_ROW_COUNT + row_idx)
-                            && let Some(cell) = row.get_mut(col_idx)
-                        {
-                            *cell = if let Some(enum_label) = &sig_value.value.enum_label {
-                                format!("{} ({})", enum_label, sig_value.value.int_rounded())
-                            } else {
-                                sig_value.value.physical.to_string()
-                            };
-                        }
-                    }
-                }
-            }
 
             let first_correlated_time: Option<String> =
                 chunk.correlation_fn.as_ref().and_then(|cf| {
@@ -201,7 +165,44 @@ impl TableBuilder {
                 None => out_folder.join(format!("out_{:03}.csv", chunk_idx)),
             };
             let mut wtr = csv::Writer::from_path(out_file.clone()).unwrap();
-            for row in csv_table {
+            for row in self.build_header_rows() {
+                wtr.write_record(&row).unwrap();
+            }
+
+            let mut msg_iter = chunk.parsed_msgs.iter().peekable();
+            for row_idx in 0..num_rows {
+                let row_time = first_row_time + row_idx * consts::BIN_WIDTH_MS;
+                let row_end = row_time + consts::BIN_WIDTH_MS;
+                let mut row = vec![String::new(); self.row_width()];
+
+                if let Some(ct) = chunk
+                    .correlation_fn
+                    .as_ref()
+                    .and_then(|cf| cf.correlate(row_time))
+                {
+                    row[0] = ct.format("%H:%M:%S.%3f").to_string();
+                }
+                row[1] = format!("{:.3}", row_time as f32 / 1000.0);
+
+                while let Some(msg) = msg_iter.peek() {
+                    if msg.timestamp >= row_end {
+                        break;
+                    }
+
+                    let msg = msg_iter.next().unwrap();
+                    let decoded = &msg.decoded;
+                    for (sig_name, sig_value) in &decoded.signals {
+                        let key = (msg.bus_name.clone(), decoded.name.clone(), sig_name.clone());
+                        if let Some(&col_idx) = self.indexer.get(&key) {
+                            row[col_idx] = if let Some(enum_label) = &sig_value.value.enum_label {
+                                format!("{} ({})", enum_label, sig_value.value.int_rounded())
+                            } else {
+                                sig_value.value.physical.to_string()
+                            };
+                        }
+                    }
+                }
+
                 wtr.write_record(&row).unwrap();
             }
             wtr.flush().unwrap();
