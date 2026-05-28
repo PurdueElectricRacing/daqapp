@@ -77,10 +77,12 @@ impl DAQApp {
         can_to_ui_rx: std::sync::mpsc::Receiver<messages::MsgFromCan>,
         ui_to_can_tx: std::sync::mpsc::Sender<messages::MsgFromUi>,
         settings: settings::Settings,
-        _cc: &eframe::CreationContext,
+        cc: &eframe::CreationContext,
     ) -> Self {
         let theme_selection = settings.theme;
         let theme_style = theme_selection.get_style();
+
+        egui_extras::install_image_loaders(&cc.egui_ctx);
 
         Self {
             connection_status: ConnectionStatus::Disconnected,

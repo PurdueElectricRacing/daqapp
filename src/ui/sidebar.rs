@@ -1,4 +1,4 @@
-use crate::{action, app, connection, messages, util};
+use crate::{action, app, assets, connection, messages, util};
 use eframe::egui;
 
 pub fn select_dbc(
@@ -23,7 +23,14 @@ pub fn show(app: &mut app::DAQApp, ctx: &egui::Context) {
     egui::SidePanel::left("left_sidebar")
         .resizable(true)
         .show_animated(ctx, app.is_sidebar_open, |ui| {
-            ui.heading("Side bar");
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::Image::from_bytes(assets::PER_LOGO_PATH, assets::PER_LOGO_BYTES)
+                        .show_loading_spinner(true)
+                        .corner_radius(5),
+                );
+                ui.heading("Side bar");
+            });
             ui.separator();
 
             let theme_label = format!("🎨 Theme: {}", app.theme_selection.get_name());
