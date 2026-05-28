@@ -4,7 +4,7 @@ use crate::{
 };
 
 const HEADER_ROW_COUNT: usize = 7;
-const HEADER_COLUMN_COUNT: usize = 3; // real time, daq timestamp, then table columns
+const HEADER_COLUMN_COUNT: usize = 3; // real time, daq timestamp, then per-row header label
 const HEADER_LABELS: [&str; HEADER_ROW_COUNT] = [
     "Bus",
     "Node",
