@@ -142,6 +142,7 @@ impl TableBuilder {
     pub fn create_and_write_tables(
         &self,
         out_folder: &std::path::Path,
+        output_prefix: &str,
         correlated_chunks: Vec<correlate::CorrelationChunkResult>,
     ) {
         std::fs::create_dir_all(out_folder).unwrap();
@@ -161,8 +162,8 @@ impl TableBuilder {
                 });
 
             let out_file = match first_correlated_time {
-                Some(t) => out_folder.join(format!("out_{:03}_{}.csv", chunk_idx, t)),
-                None => out_folder.join(format!("out_{:03}.csv", chunk_idx)),
+                Some(t) => out_folder.join(format!("{}_{:03}_{}.csv", output_prefix, chunk_idx, t)),
+                None => out_folder.join(format!("{}_{:03}.csv", output_prefix, chunk_idx)),
             };
             let mut wtr = csv::Writer::from_path(out_file.clone()).unwrap();
             for row in self.build_header_rows() {
