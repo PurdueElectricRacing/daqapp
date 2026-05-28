@@ -4,7 +4,7 @@ use crate::{
 };
 
 const HEADER_ROW_COUNT: usize = 7;
-const HEADER_COLUMMN_COUNT: usize = 3; // real time, daq timestamp, then table columns
+const HEADER_COLUMN_COUNT: usize = 3; // real time, daq timestamp, then table columns
 const HEADER_LABELS: [&str; HEADER_ROW_COUNT] = [
     "Bus",
     "Node",
@@ -52,13 +52,13 @@ impl TableBuilder {
     pub fn new() -> Self {
         Self {
             header_columns: Vec::new(),
-            next_col_idx: HEADER_COLUMMN_COUNT,
+            next_col_idx: HEADER_COLUMN_COUNT,
             indexer: std::collections::HashMap::new(),
         }
     }
 
     fn row_width(&self) -> usize {
-        HEADER_COLUMMN_COUNT + self.header_columns.len()
+        HEADER_COLUMN_COUNT + self.header_columns.len()
     }
 
     fn push_column(&mut self, key: (String, String, String), column: TableColumn) {
@@ -82,7 +82,7 @@ impl TableBuilder {
             vec!["".to_string(), "".to_string(), HEADER_LABELS[6].to_string()],
         ];
         assert!(rows.len() == HEADER_ROW_COUNT);
-        assert!(rows.iter().all(|r| r.len() == HEADER_COLUMMN_COUNT));
+        assert!(rows.iter().all(|r| r.len() == HEADER_COLUMN_COUNT));
 
         for column in &self.header_columns {
             for (row, cell) in rows.iter_mut().zip(column.cells()) {
