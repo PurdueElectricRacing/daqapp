@@ -121,6 +121,13 @@ impl LogParser {
                 }
             }
         };
+
+        let prefix = if self.output_prefix.trim().is_empty() {
+            "out".to_string()
+        } else {
+            self.output_prefix.trim().to_string()
+        };
+
         let logs_dir = logs_dir.clone();
         let output_dir = output_dir.clone();
 
@@ -131,7 +138,7 @@ impl LogParser {
             log::info!("Using DBC: {:?} for BUS 0 (VCAN)", dbc_path_bus_0);
             log::info!("Using DBC: {:?} for BUS 1 (MCAN)", dbc_path_bus_1);
             log::info!("Parsing logs from: {}", logs_dir.display());
-            log::info!("Output to: {}", output_dir.display());
+            log::info!("Output to: {} (prefix: {})", output_dir.display(), prefix);
 
             let Ok(parser_bus_0) = can_decode::Parser::from_dbc_file(&dbc_path_bus_0) else {
                 log::error!(
@@ -165,7 +172,7 @@ impl LogParser {
             let mut table_builder = daq_log_parse::table::TableBuilder::new();
             table_builder.create_header(&parser_bus_0, "VCAN");
             table_builder.create_header(&parser_bus_1, "MCAN");
-            table_builder.create_and_write_tables(&output_dir, correlated_chunks);
+            table_builder.create_and_write_tables(&output_dir, &prefix, correlated_chunks);
 
             log::info!("Parsing completed successfully");
             let _ = parse_to_ui_tx.send(MsgFromParserThread::SuccessExit(format!(
