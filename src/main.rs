@@ -5,6 +5,7 @@ mod can;
 mod connection;
 mod daq_log_parse;
 mod formatter;
+mod frozen;
 mod messages;
 mod settings;
 mod shortcuts;
@@ -13,7 +14,6 @@ mod ui;
 mod util;
 mod widgets;
 mod workspace;
-mod frozen;
 
 fn main() -> eframe::Result<()> {
     env_logger::Builder::from_default_env()
