@@ -75,7 +75,47 @@ impl ViewerTable {
 
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     let low_search = self.search.to_lowercase();
-                    
+
+                    if !undecoded.is_empty() {
+                        let mut undecoded_msg_keys = undecoded
+                            .iter()
+                            .filter_map(|(&msg_id, msg)| {
+                                if self.search.is_empty()
+                                    || msg.msg_id.to_string().to_lowercase().contains(&low_search)
+                                    || "unknown".contains(&low_search)
+                                    || "unparsed".contains(&low_search)
+                                {
+                                    Some(msg_id)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<_>>();
+                        undecoded_msg_keys.sort();
+                        for msg_id in undecoded_msg_keys {
+                            let msg = &undecoded[&msg_id];
+                            let raw_bytes_str = msg
+                                .raw_bytes
+                                .iter()
+                                .map(|b| format!("{:02X}", b))
+                                .collect::<Vec<_>>()
+                                .join(" ");
+                            MessageCard {
+                                msg_name: "Unknown",
+                                msg_id: msg.msg_id,
+                                tx_node: "Unknown",
+                                raw_bytes: &raw_bytes_str,
+                                timestamp: &msg.timestamp.format("%-I:%M:%S%.3f").to_string(),
+                                signals: Vec::new(),
+                                search: &self.search,
+                            }
+                            .ui(ui)
+                            .into_iter()
+                            .for_each(|spawn| action_queue.push(spawn));
+                        }
+                        ui.add_space(8.0);
+                    }
+
                     let mut decoded_msg_keys = decoded
                         .iter()
                         .filter_map(|(&msg_id, msg)| {
@@ -147,43 +187,6 @@ impl ViewerTable {
                         .for_each(|spawn| action_queue.push(spawn));
                         ui.add_space(8.0);
                     }
-
-                    let mut undecoded_msg_keys = undecoded
-                        .iter()
-                        .filter_map(|(&msg_id, msg)| {
-                            if self.search.is_empty()
-                                || msg.msg_id.to_string().to_lowercase().contains(&low_search)
-                                || "unknown".contains(&low_search)
-                                || "unparsed".contains(&low_search)
-                            {
-                                Some(msg_id)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<_>>();
-                    undecoded_msg_keys.sort();
-                    for msg_id in undecoded_msg_keys {
-                        let msg = &undecoded[&msg_id];
-                        let raw_bytes_str = msg
-                            .raw_bytes
-                            .iter()
-                            .map(|b| format!("{:02X}", b))
-                            .collect::<Vec<_>>()
-                            .join(" ");
-                        MessageCard {
-                            msg_name: "Unknown",
-                            msg_id: msg.msg_id,
-                            tx_node: "Unknown",
-                            raw_bytes: &raw_bytes_str,
-                            timestamp: &msg.timestamp.format("%-I:%M:%S%.3f").to_string(),
-                            signals: Vec::new(),
-                            search: &self.search,
-                        }.ui(ui)
-                        .into_iter()
-                        .for_each(|spawn| action_queue.push(spawn));
-                    }
-                    ui.add_space(8.0);
                 });
             });
 
