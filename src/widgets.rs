@@ -1,4 +1,4 @@
-use crate::{action, app, can, ui};
+use crate::{action, app, messages, ui};
 use eframe::egui;
 
 pub enum Widget {
@@ -7,6 +7,12 @@ pub enum Widget {
     Bootloader(ui::bootloader::Bootloader),
     Scope(ui::scope::Scope),
     LogParser(ui::log_parser::LogParser),
+    SendUi(ui::send::SendUi),
+    BusLoad(ui::bus_load::BusLoad),
+    BatteryViewer(ui::battery::BatteryViewer),
+    GgPlot(ui::gg_plot::GgPlot),
+    Dynamics(ui::dynamics::Dynamics),
+    Jitter(ui::jitter::Jitter),
 }
 
 impl Widget {
@@ -17,15 +23,22 @@ impl Widget {
             Widget::Bootloader(w) => &w.title,
             Widget::Scope(w) => &w.title,
             Widget::LogParser(w) => &w.title,
+            Widget::SendUi(w) => &w.title,
+            Widget::BusLoad(w) => &w.title,
+            Widget::BatteryViewer(w) => &w.title,
+            Widget::GgPlot(w) => &w.title,
+            Widget::Dynamics(w) => &w.title,
+            Widget::Jitter(w) => &w.title,
         }
     }
 
     pub fn show(
         &mut self,
         ui: &mut egui::Ui,
-        can_messages: &[can::message::ParsedMessage],
+        can_messages: &[messages::MsgFromCan],
         action_queue: &mut Vec<action::AppAction>,
         parser: Option<&app::ParserInfo>,
+        ui_to_can_tx: std::sync::mpsc::Sender<messages::MsgFromUi>,
     ) -> egui_tiles::UiResponse {
         let mut received_new_data = false;
 
@@ -45,14 +58,26 @@ impl Widget {
             Widget::Bootloader(w) => w.show(ui),
             Widget::Scope(w) => w.show(ui),
             Widget::LogParser(w) => w.show(ui, parser),
+            Widget::SendUi(w) => w.show(ui, parser),
+            Widget::BusLoad(w) => w.show(ui),
+            Widget::BatteryViewer(w) => w.show(ui),
+            Widget::GgPlot(w) => w.show(ui),
+            Widget::Dynamics(w) => w.show(ui),
+            Widget::Jitter(w) => w.show(ui, parser),
         }
     }
 
-    fn handle_can_message(&mut self, msg: &can::message::ParsedMessage) {
+    fn handle_can_message(&mut self, msg: &messages::MsgFromCan) {
         match self {
             Widget::ViewerTable(w) => w.handle_can_message(msg),
             Widget::ViewerList(w) => w.handle_can_message(msg),
             Widget::Scope(w) => w.handle_can_message(msg),
+            Widget::SendUi(w) => w.handle_can_message(msg),
+            Widget::BusLoad(w) => w.handle_can_message(msg),
+            Widget::BatteryViewer(w) => w.handle_can_message(msg),
+            Widget::GgPlot(w) => w.handle_can_message(msg),
+            Widget::Dynamics(w) => w.handle_can_message(msg),
+            Widget::Jitter(w) => w.handle_can_message(msg),
             _ => {}
         }
     }

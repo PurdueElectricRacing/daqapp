@@ -1,7 +1,7 @@
-use crate::{action, can};
+use crate::{action, messages};
 use eframe::egui;
 
-type MsgMap = hashbrown::HashMap<u32, can::message::ParsedMessage>;
+type MsgMap = hashbrown::HashMap<u32, messages::ParsedMessage>;
 
 pub struct ViewerTable {
     pub title: String,
@@ -105,12 +105,17 @@ impl ViewerTable {
                             .signals
                             .iter()
                             .map(|(sig_name, signal)| {
-                                if signal.unit.is_empty() {
-                                    (sig_name.as_str(), format!("{:.2}", signal.value))
+                                if let Some(ref enum_label) = signal.value.enum_label {
+                                    (
+                                        sig_name.as_str(),
+                                        format!("{} ({})", enum_label, signal.value.int_rounded()),
+                                    )
+                                } else if signal.unit.is_empty() {
+                                    (sig_name.as_str(), format!("{:.2}", signal.value.physical))
                                 } else {
                                     (
                                         sig_name.as_str(),
-                                        format!("{:.2} {}", signal.value, signal.unit),
+                                        format!("{:.2} {}", signal.value.physical, signal.unit),
                                     )
                                 }
                             })
@@ -141,8 +146,11 @@ impl ViewerTable {
         egui_tiles::UiResponse::None
     }
 
-    pub fn handle_can_message(&mut self, msg: &can::message::ParsedMessage) {
-        self.decoded_msgs.insert(msg.decoded.msg_id, msg.clone());
+    pub fn handle_can_message(&mut self, msg: &messages::MsgFromCan) {
+        if let messages::MsgFromCan::ParsedMessage(parsed_msg) = msg {
+            self.decoded_msgs
+                .insert(parsed_msg.decoded.msg_id, parsed_msg.clone());
+        }
     }
 }
 

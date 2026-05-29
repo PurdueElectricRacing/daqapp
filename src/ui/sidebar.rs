@@ -1,9 +1,9 @@
-use crate::{action, app, connection, ui, util};
+use crate::{action, app, assets, connection, messages, util};
 use eframe::egui;
 
 pub fn select_dbc(
     app: &mut app::DAQApp,
-    ui_sender: &std::sync::mpsc::Sender<ui::ui_messages::UiMessage>,
+    ui_to_can_tx: &std::sync::mpsc::Sender<messages::MsgFromUi>,
 ) {
     if let Some(path) = rfd::FileDialog::new()
         .add_filter("DBC Files", &["dbc"])
@@ -11,8 +11,8 @@ pub fn select_dbc(
     {
         app.parser = app::ParserInfo::new(path.clone());
         if app.parser.is_some() {
-            ui_sender
-                .send(ui::ui_messages::UiMessage::DbcSelected(path))
+            ui_to_can_tx
+                .send(messages::MsgFromUi::DbcSelected(path))
                 .expect("Failed to send DBC selected message");
             app.save_settings();
         }
@@ -23,7 +23,14 @@ pub fn show(app: &mut app::DAQApp, ctx: &egui::Context) {
     egui::SidePanel::left("left_sidebar")
         .resizable(true)
         .show_animated(ctx, app.is_sidebar_open, |ui| {
-            ui.heading("Side bar");
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::Image::from_bytes(assets::PER_LOGO_PATH, assets::PER_LOGO_BYTES)
+                        .show_loading_spinner(true)
+                        .corner_radius(5),
+                );
+                ui.heading("Side bar");
+            });
             ui.separator();
 
             let theme_label = format!("🎨 Theme: {}", app.theme_selection.get_name());
@@ -59,6 +66,35 @@ pub fn show(app: &mut app::DAQApp, ctx: &egui::Context) {
                 ));
             }
 
+            if ui.button("Add Message Sender").clicked() {
+                app.action_queue
+                    .push(action::AppAction::SpawnWidget(action::WidgetType::SendUi));
+            }
+
+            if ui.button("Add Bus Load").clicked() {
+                app.action_queue
+                    .push(action::AppAction::SpawnWidget(action::WidgetType::BusLoad));
+            }
+
+            if ui.button("Add Battery Viewer").clicked() {
+                app.action_queue.push(action::AppAction::SpawnWidget(
+                    action::WidgetType::BatteryViewer,
+                ));
+            }
+
+            if ui.button("Add G-G Plot").clicked() {
+                app.action_queue
+                    .push(action::AppAction::SpawnWidget(action::WidgetType::GgPlot));
+            }
+            if ui.button("Add Dynamics").clicked() {
+                app.action_queue
+                    .push(action::AppAction::SpawnWidget(action::WidgetType::Dynamics));
+            }
+            if ui.button("Add Jitter").clicked() {
+                app.action_queue
+                    .push(action::AppAction::SpawnWidget(action::WidgetType::Jitter));
+            }
+
             ui.separator();
             ui.heading("Connection Settings");
 
@@ -74,8 +110,7 @@ pub fn show(app: &mut app::DAQApp, ctx: &egui::Context) {
 
             ui.horizontal(|ui| {
                 let selected_text = match &app.selected_source {
-                    Some(connection::ConnectionSource::Serial(p)) => format!("Serial: {}", p),
-                    Some(connection::ConnectionSource::Udp(p)) => format!("UDP: {}", p),
+                    Some(connection_source) => connection_source.display_name(),
                     None => "Select Source".to_string(),
                 };
 
@@ -116,6 +151,49 @@ pub fn show(app: &mut app::DAQApp, ctx: &egui::Context) {
                             app.connect_can();
                             app.save_settings();
                         }
+                        ui.separator();
+                        ui.label("Simulated");
+                        let dbc_path = app.parser.as_ref().map(|p| p.dbc_path.clone());
+                        let sim_sources = [
+                            connection::ConnectionSource::Simulated(true, dbc_path.clone()),
+                            connection::ConnectionSource::Simulated(false, dbc_path.clone()),
+                        ];
+                        for sim_source in sim_sources {
+                            let label = match sim_source {
+                                connection::ConnectionSource::Simulated(true, _) => {
+                                    "Simulated (connected)"
+                                }
+                                connection::ConnectionSource::Simulated(false, _) => {
+                                    "Simulated (disconnected)"
+                                }
+                                _ => unreachable!(),
+                            };
+                            if ui
+                                .selectable_value(
+                                    &mut app.selected_source,
+                                    Some(sim_source.clone()),
+                                    label,
+                                )
+                                .changed()
+                            {
+                                app.connect_can();
+                                app.save_settings();
+                            }
+                        }
+                        ui.separator();
+                        ui.label("Development");
+                        let loopback_source = connection::ConnectionSource::Loopback;
+                        if ui
+                            .selectable_value(
+                                &mut app.selected_source,
+                                Some(loopback_source),
+                                "Loopback",
+                            )
+                            .changed()
+                        {
+                            app.connect_can();
+                            app.save_settings();
+                        }
                     });
 
                 if ui.button("🔄").clicked() {
@@ -141,10 +219,10 @@ pub fn show(app: &mut app::DAQApp, ctx: &egui::Context) {
 
             ui.horizontal(|ui| {
                 // Clone the sender so we don’t borrow app immutably yet
-                let ui_sender = app.ui_sender.clone();
+                let ui_to_can_tx = app.ui_to_can_tx.clone();
 
                 if ui.button("📁 Select DBC").clicked() {
-                    select_dbc(app, &ui_sender); // mutable borrow is fine
+                    select_dbc(app, &ui_to_can_tx); // mutable borrow is fine
                 }
 
                 if let Some(path) = app.parser.as_ref().map(|p| &p.dbc_path) {

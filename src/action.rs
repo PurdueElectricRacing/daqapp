@@ -18,6 +18,12 @@ pub enum WidgetType {
         signal_name: String,
     },
     LogParser,
+    SendUi,
+    BusLoad,
+    BatteryViewer,
+    GgPlot,
+    Dynamics,
+    Jitter,
 }
 
 impl AppAction {
@@ -27,6 +33,12 @@ impl AppAction {
             ("Spawn CAN List", WidgetType::ViewerList),
             ("Spawn Bootloader", WidgetType::Bootloader),
             ("Spawn Log Parser", WidgetType::LogParser),
+            ("Spawn Send UI", WidgetType::SendUi),
+            ("Spawn Bus Load", WidgetType::BusLoad),
+            ("Spawn Battery Viewer", WidgetType::BatteryViewer),
+            ("Spawn G-G Plot", WidgetType::GgPlot),
+            ("Spawn Dynamics", WidgetType::Dynamics),
+            ("Spawn Jitter", WidgetType::Jitter),
         ]
     }
 }
