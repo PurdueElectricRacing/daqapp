@@ -2,10 +2,12 @@ use crate::{action, app, formatter, messages, frozen};
 use eframe::egui;
 
 type DecodedMsgMap = hashbrown::HashMap<u32, messages::ParsedMessage>;
+type UndecodedMsgMap = hashbrown::HashMap<u32, messages::UnparsedMessage>;
 
 pub struct ViewerTable {
     pub title: String,
     pub decoded_msgs: frozen::Frozen<DecodedMsgMap>,
+    pub undecoded_msgs: frozen::Frozen<UndecodedMsgMap>,
     pub paused: bool,
     pub search: String,
 }
@@ -15,6 +17,7 @@ impl ViewerTable {
         Self {
             title: format!("CAN Viewer Table #{}", instance_num),
             decoded_msgs: frozen::Frozen::new(DecodedMsgMap::new()),
+            undecoded_msgs: frozen::Frozen::new(UndecodedMsgMap::new()),
             paused: false,
             search: String::new(),
         }
@@ -35,8 +38,10 @@ impl ViewerTable {
             self.paused = !self.paused;
             if self.paused {
                 self.decoded_msgs.freeze();
+                self.undecoded_msgs.freeze();
             } else {
                 self.decoded_msgs.unfreeze();
+                self.undecoded_msgs.unfreeze();
             }
         }
 
@@ -55,8 +60,9 @@ impl ViewerTable {
                 ui.add_space(8.0);
 
                 let decoded = self.decoded_msgs.get();
+                let undecoded = self.undecoded_msgs.get();
 
-                if decoded.is_empty() {
+                if decoded.is_empty() && undecoded.is_empty() {
                     ui.centered_and_justified(|ui| {
                         ui.label(
                             egui::RichText::new("No CAN messages to display.")
@@ -69,7 +75,8 @@ impl ViewerTable {
 
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     let low_search = self.search.to_lowercase();
-                    let mut msg_keys = decoded
+                    
+                    let mut decoded_msg_keys = decoded
                         .iter()
                         .filter_map(|(&msg_id, msg)| {
                             if self.search.is_empty()
@@ -93,8 +100,8 @@ impl ViewerTable {
                             }
                         })
                         .collect::<Vec<_>>();
-                    msg_keys.sort();
-                    for msg_id in msg_keys {
+                    decoded_msg_keys.sort();
+                    for msg_id in decoded_msg_keys {
                         let msg = &decoded[&msg_id];
                         let msg_def = parser
                             .as_ref()
@@ -140,6 +147,43 @@ impl ViewerTable {
                         .for_each(|spawn| action_queue.push(spawn));
                         ui.add_space(8.0);
                     }
+
+                    let mut undecoded_msg_keys = undecoded
+                        .iter()
+                        .filter_map(|(&msg_id, msg)| {
+                            if self.search.is_empty()
+                                || msg.msg_id.to_string().to_lowercase().contains(&low_search)
+                                || "unknown".contains(&low_search)
+                                || "unparsed".contains(&low_search)
+                            {
+                                Some(msg_id)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>();
+                    undecoded_msg_keys.sort();
+                    for msg_id in undecoded_msg_keys {
+                        let msg = &undecoded[&msg_id];
+                        let raw_bytes_str = msg
+                            .raw_bytes
+                            .iter()
+                            .map(|b| format!("{:02X}", b))
+                            .collect::<Vec<_>>()
+                            .join(" ");
+                        MessageCard {
+                            msg_name: "Unknown",
+                            msg_id: msg.msg_id,
+                            tx_node: "Unknown",
+                            raw_bytes: &raw_bytes_str,
+                            timestamp: &msg.timestamp.format("%-I:%M:%S%.3f").to_string(),
+                            signals: Vec::new(),
+                            search: &self.search,
+                        }.ui(ui)
+                        .into_iter()
+                        .for_each(|spawn| action_queue.push(spawn));
+                    }
+                    ui.add_space(8.0);
                 });
             });
 
@@ -147,9 +191,18 @@ impl ViewerTable {
     }
 
     pub fn handle_can_message(&mut self, msg: &messages::MsgFromCan) {
-        if let messages::MsgFromCan::ParsedMessage(parsed_msg) = msg {
-            self.decoded_msgs.get_mut()
-                .insert(parsed_msg.decoded.msg_id, parsed_msg.clone());
+        match msg {
+            messages::MsgFromCan::ParsedMessage(parsed_msg) => {
+                self.decoded_msgs
+                    .get_mut()
+                    .insert(parsed_msg.decoded.msg_id, parsed_msg.clone());
+            }
+            messages::MsgFromCan::UnparsedMessage(unparsed_msg) => {
+                self.undecoded_msgs
+                    .get_mut()
+                    .insert(unparsed_msg.msg_id, unparsed_msg.clone());
+            }
+            _ => {}
         }
     }
 }
@@ -218,6 +271,10 @@ impl MessageCard<'_> {
         ui.add_space(4.0);
 
         // Card container
+        if self.signals.is_empty() {
+            return action_queue;
+        }
+
         egui::Frame::group(ui.style())
             .fill(ui.visuals().faint_bg_color)
             .corner_radius(egui::CornerRadius::same(8))
