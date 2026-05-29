@@ -81,7 +81,9 @@ impl ViewerTable {
                             .iter()
                             .filter_map(|(&msg_id, msg)| {
                                 if self.search.is_empty()
-                                    || msg.msg_id.to_string().to_lowercase().contains(&low_search)
+                                    || format!("{:03X}", msg.msg_id)
+                                        .to_lowercase()
+                                        .contains(&low_search)
                                     || "unknown".contains(&low_search)
                                     || "unparsed".contains(&low_search)
                                 {
@@ -121,10 +123,7 @@ impl ViewerTable {
                         .filter_map(|(&msg_id, msg)| {
                             if self.search.is_empty()
                                 || msg.decoded.name.to_lowercase().contains(&low_search)
-                                || msg
-                                    .decoded
-                                    .msg_id
-                                    .to_string()
+                                || format!("{:03X}", msg.decoded.msg_id)
                                     .to_lowercase()
                                     .contains(&low_search)
                                 || msg.decoded.tx_node.to_lowercase().contains(&low_search)
