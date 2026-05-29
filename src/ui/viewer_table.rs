@@ -1,4 +1,4 @@
-use crate::{action, messages};
+use crate::{action, messages, formatter};
 use eframe::egui;
 
 type MsgMap = hashbrown::HashMap<u32, messages::ParsedMessage>;
@@ -26,6 +26,7 @@ impl ViewerTable {
         &mut self,
         ui: &mut egui::Ui,
         action_queue: &mut Vec<action::AppAction>,
+        formatter: &Option<formatter::Formatter>,
     ) -> egui_tiles::UiResponse {
         ui.heading(format!("🚗 {}", self.title));
         if ui
