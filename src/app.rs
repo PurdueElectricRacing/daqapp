@@ -86,20 +86,9 @@ impl DAQApp {
 
         egui_extras::install_image_loaders(&cc.egui_ctx);
 
-        let formatter = formatter::Formatter::new_from_file(formatter::FORMATTER_CONFIG_FILE)
-            .map_err(|e| {
-                log::error!(
-                    "Failed to load formatter config from {}: {}.",
-                    formatter::FORMATTER_CONFIG_FILE,
-                    e
-                );
-                e
-            })
-            .ok();
-
         Self {
             connection_status: ConnectionStatus::Disconnected,
-            value_formatter: formatter,
+            value_formatter: formatter::Formatter::try_load(),
             is_sidebar_open: true,
             command_palette: ui::command_palette::CommandPalette::new(),
             tile_tree: egui_tiles::Tree::empty("workspace_tree"),

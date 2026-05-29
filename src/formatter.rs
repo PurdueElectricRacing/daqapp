@@ -109,6 +109,19 @@ impl Formatter {
         Self::new(config).map_err(|e| e.into())
     }
 
+    pub fn try_load() -> Option<Self> {
+        Self::new_from_file(FORMATTER_CONFIG_FILE)
+            .map_err(|e| {
+                log::error!(
+                    "Failed to load formatter config from {}: {}",
+                    FORMATTER_CONFIG_FILE,
+                    e
+                );
+                e
+            })
+            .ok()
+    }
+
     pub fn format(
         &self,
         msg_name: &str,

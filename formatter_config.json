@@ -3,11 +3,11 @@
         "git_hash": "hex"
     },
     "*_module_fault_event": {
-        "val": "0",
-        "idx": "0"
+        "val": 0,
+        "idx": 0
     },
     "*_stats": {
-        "*_overflow": "0",
-        "*_overrun": "0"
+        "*_overflow": 0,
+        "*_overrun": 0
     }
 }
