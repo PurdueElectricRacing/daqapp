@@ -13,6 +13,7 @@ mod ui;
 mod util;
 mod widgets;
 mod workspace;
+mod frozen;
 
 fn main() -> eframe::Result<()> {
     env_logger::Builder::from_default_env()

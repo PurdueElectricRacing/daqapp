@@ -1,12 +1,11 @@
-use crate::{action, app, formatter, messages};
+use crate::{action, app, formatter, messages, frozen};
 use eframe::egui;
 
-type MsgMap = hashbrown::HashMap<u32, messages::ParsedMessage>;
+type DecodedMsgMap = hashbrown::HashMap<u32, messages::ParsedMessage>;
 
 pub struct ViewerTable {
     pub title: String,
-    pub decoded_msgs: MsgMap,
-    pub frozen_msgs: Option<MsgMap>,
+    pub decoded_msgs: frozen::Frozen<DecodedMsgMap>,
     pub paused: bool,
     pub search: String,
 }
@@ -15,8 +14,7 @@ impl ViewerTable {
     pub fn new(instance_num: usize) -> Self {
         Self {
             title: format!("CAN Viewer Table #{}", instance_num),
-            decoded_msgs: MsgMap::new(),
-            frozen_msgs: None,
+            decoded_msgs: frozen::Frozen::new(DecodedMsgMap::new()),
             paused: false,
             search: String::new(),
         }
@@ -36,9 +34,9 @@ impl ViewerTable {
         {
             self.paused = !self.paused;
             if self.paused {
-                self.frozen_msgs = Some(self.decoded_msgs.clone());
+                self.decoded_msgs.freeze();
             } else {
-                self.frozen_msgs = None;
+                self.decoded_msgs.unfreeze();
             }
         }
 
@@ -56,13 +54,9 @@ impl ViewerTable {
                 });
                 ui.add_space(8.0);
 
-                let msgs = if let Some(frozen) = &self.frozen_msgs {
-                    frozen
-                } else {
-                    &self.decoded_msgs
-                };
+                let decoded = self.decoded_msgs.get();
 
-                if msgs.is_empty() {
+                if decoded.is_empty() {
                     ui.centered_and_justified(|ui| {
                         ui.label(
                             egui::RichText::new("No CAN messages to display.")
@@ -75,7 +69,7 @@ impl ViewerTable {
 
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     let low_search = self.search.to_lowercase();
-                    let mut msg_keys = msgs
+                    let mut msg_keys = decoded
                         .iter()
                         .filter_map(|(&msg_id, msg)| {
                             if self.search.is_empty()
@@ -101,7 +95,7 @@ impl ViewerTable {
                         .collect::<Vec<_>>();
                     msg_keys.sort();
                     for msg_id in msg_keys {
-                        let msg = &msgs[&msg_id];
+                        let msg = &decoded[&msg_id];
                         let msg_def = parser
                             .as_ref()
                             .map(|p| &p.parser)
@@ -154,7 +148,7 @@ impl ViewerTable {
 
     pub fn handle_can_message(&mut self, msg: &messages::MsgFromCan) {
         if let messages::MsgFromCan::ParsedMessage(parsed_msg) = msg {
-            self.decoded_msgs
+            self.decoded_msgs.get_mut()
                 .insert(parsed_msg.decoded.msg_id, parsed_msg.clone());
         }
     }
