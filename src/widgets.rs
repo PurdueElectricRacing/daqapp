@@ -1,4 +1,4 @@
-use crate::{action, app, messages, ui};
+use crate::{action, app, messages, ui, formatter};
 use eframe::egui;
 
 pub enum Widget {
@@ -39,6 +39,7 @@ impl Widget {
         action_queue: &mut Vec<action::AppAction>,
         parser: Option<&app::ParserInfo>,
         ui_to_can_tx: std::sync::mpsc::Sender<messages::MsgFromUi>,
+        formatter: &Option<formatter::Formatter>,
     ) -> egui_tiles::UiResponse {
         let mut received_new_data = false;
 
@@ -53,7 +54,7 @@ impl Widget {
         }
 
         match self {
-            Widget::ViewerTable(w) => w.show(ui, action_queue),
+            Widget::ViewerTable(w) => w.show(ui, action_queue, formatter),
             Widget::ViewerList(w) => w.show(ui),
             Widget::Bootloader(w) => w.show(ui),
             Widget::Scope(w) => w.show(ui),
