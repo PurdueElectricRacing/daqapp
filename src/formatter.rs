@@ -125,6 +125,7 @@ impl Formatter {
     /// Formats a signal value based on the message and signal name, using the first matching pattern in the config.
     /// If no pattern matches, returns a default formatted string (enum label if available, otherwise physical value with 2 decimal places).
     /// If there is a unit associated with the signal, it will be appended to the formatted value.
+    /// Hex and binary formatting require the signal definition to determine the number of bits and value type.
     pub fn format(
         &self,
         msg_name: &str,
