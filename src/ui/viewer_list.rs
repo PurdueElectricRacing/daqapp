@@ -24,7 +24,6 @@ impl ViewerList {
     pub fn show(
         &mut self,
         ui: &mut egui::Ui,
-
         formatter: &Option<formatter::Formatter>,
         parser: Option<&app::ParserInfo>,
     ) -> egui_tiles::UiResponse {
