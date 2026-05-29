@@ -13,8 +13,8 @@ type MsgList = VecDeque<Msg>;
 
 pub struct ViewerList {
     pub title: String,
-    pub msgs: frozen::Frozen<MsgList>,
-    pub paused: bool,
+    msgs: frozen::Frozen<MsgList>,
+    paused: bool,
 }
 
 impl ViewerList {

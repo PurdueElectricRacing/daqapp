@@ -6,10 +6,10 @@ type UndecodedMsgMap = hashbrown::HashMap<u32, messages::UnparsedMessage>;
 
 pub struct ViewerTable {
     pub title: String,
-    pub decoded_msgs: frozen::Frozen<DecodedMsgMap>,
-    pub undecoded_msgs: frozen::Frozen<UndecodedMsgMap>,
-    pub paused: bool,
-    pub search: String,
+    decoded_msgs: frozen::Frozen<DecodedMsgMap>,
+    undecoded_msgs: frozen::Frozen<UndecodedMsgMap>,
+    paused: bool,
+    search: String,
 }
 
 impl ViewerTable {
