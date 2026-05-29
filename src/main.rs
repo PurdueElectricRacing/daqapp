@@ -13,11 +13,10 @@ mod util;
 mod widgets;
 mod workspace;
 
-// fn main() -> eframe::Result<()> {
-    
-//     env_logger::Builder::from_default_env()
-//         .filter_level(log::LevelFilter::Info)
-//         .init();
+fn main() -> eframe::Result<()> {
+    env_logger::Builder::from_default_env()
+        .filter_level(log::LevelFilter::Info)
+        .init();
 
     let (can_to_ui_tx, can_to_ui_rx) = std::sync::mpsc::channel::<messages::MsgFromCan>();
     let (ui_to_can_tx, ui_to_can_rx) = std::sync::mpsc::channel::<messages::MsgFromUi>();
