@@ -108,3 +108,30 @@ impl Formatter {
         let config: FormatterConfig = serde_json::from_str(&config_str)?;
         Self::new(config).map_err(|e| e.into())
     }
+
+    pub fn format(
+        &self,
+        msg_name: &str,
+        signal_name: &str,
+        sig_def: can_dbc::Signal,
+        value: &can_decode::DecodedSignalValue,
+    ) -> String {
+        for (msg_glob, signal_vec) in &self.compiled_config {
+            if msg_glob.is_match(msg_name) {
+                for (signal_glob, formatting) in signal_vec {
+                    if signal_glob.is_match(signal_name) {
+                        return match formatting {
+                            Formatting::Hex => format!("0x{:X}", value.int_rounded()),
+                            Formatting::Binary => format!("0b{:b}", value.int_rounded()),
+                            Formatting::Decimal(places) => {
+                                format!("{:.*}", *places as usize, value.physical)
+                            }
+                        };
+                    }
+                }
+            }
+        }
+        // Default formatting if no match: 2 decimal places
+        format!("{:.2}", value.physical)
+    }
+}
