@@ -30,4 +30,14 @@ impl<T: Clone> Frozen<T> {
     pub fn get_mut(&mut self) -> &mut T {
         &mut self.rt_data
     }
+
+    pub fn apply_both<F>(&mut self, f: F)
+    where
+        F: Fn(&mut T),
+    {
+        f(&mut self.rt_data);
+        if let Some(ref mut frozen) = self.frozen_data {
+            f(frozen);
+        }
+    }
 }
