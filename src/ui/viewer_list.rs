@@ -1,4 +1,4 @@
-use crate::messages;
+use crate::{app, formatter, messages};
 use eframe::egui;
 use std::collections::VecDeque;
 
@@ -21,7 +21,12 @@ impl ViewerList {
         }
     }
 
-    pub fn show(&mut self, ui: &mut egui::Ui) -> egui_tiles::UiResponse {
+    pub fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        formatter: &Option<formatter::Formatter>,
+        parser: Option<&app::ParserInfo>,
+    ) -> egui_tiles::UiResponse {
         ui.heading(format!("🚗 {}", self.title));
         if ui
             .button(if self.paused { "Resume" } else { "Pause" })
@@ -63,6 +68,11 @@ impl ViewerList {
                     &self.decoded_msgs
                 };
                 for msg in msgs.iter().rev() {
+                    let msg_def = parser
+                        .as_ref()
+                        .map(|p| &p.parser)
+                        .and_then(|p| p.msg_def(msg.decoded.msg_id));
+
                     for (sig_name, signal) in msg.decoded.signals.iter() {
                         body.row(18.0, |mut row| {
                             row.col(|ui| {
@@ -78,18 +88,16 @@ impl ViewerList {
                                 ui.label(sig_name.to_string());
                             });
                             row.col(|ui| {
-                                if let Some(ref enum_label) = signal.value.enum_label {
-                                    ui.label(format!(
-                                        "{} ({})",
-                                        enum_label,
-                                        signal.value.int_rounded()
-                                    ));
-                                } else if signal.unit.is_empty() {
-                                    ui.label(format!("{:.2}", signal.value.physical));
-                                } else {
-                                    ui.label(format!(
-                                        "{:.2} {}",
-                                        signal.value.physical, signal.unit
+                                let sig_def = msg_def
+                                    .and_then(|md| md.signals.iter().find(|s| s.name == *sig_name));
+                                {
+                                    ui.label(formatter::try_format(
+                                        formatter,
+                                        &msg.decoded.name,
+                                        sig_name,
+                                        sig_def,
+                                        Some(&signal.unit),
+                                        &signal.value,
                                     ));
                                 }
                             });

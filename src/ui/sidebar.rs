@@ -1,4 +1,4 @@
-use crate::{action, app, assets, connection, messages, util};
+use crate::{action, app, assets, connection, formatter, messages, util};
 use eframe::egui;
 
 pub fn select_dbc(
@@ -261,5 +261,11 @@ pub fn show(app: &mut app::DAQApp, ctx: &egui::Context) {
                     ui.label("DBC: None selected");
                 }
             });
+
+            ui.separator();
+
+            if ui.button("Reload formatter").clicked() {
+                app.value_formatter = formatter::Formatter::try_load();
+            }
         });
 }

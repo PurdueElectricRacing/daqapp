@@ -1,5 +1,6 @@
 use crate::{
-    action, connection, messages, settings, shortcuts, theme, ui, util, widgets, workspace,
+    action, connection, formatter, messages, settings, shortcuts, theme, ui, util, widgets,
+    workspace,
 };
 use eframe::egui;
 
@@ -34,6 +35,7 @@ pub enum ConnectionStatus {
 
 pub struct DAQApp {
     pub connection_status: ConnectionStatus,
+    pub value_formatter: Option<formatter::Formatter>,
     pub is_sidebar_open: bool,
     pub command_palette: ui::command_palette::CommandPalette,
     pub tile_tree: egui_tiles::Tree<widgets::Widget>,
@@ -88,6 +90,7 @@ impl DAQApp {
 
         Self {
             connection_status: ConnectionStatus::Disconnected,
+            value_formatter: formatter::Formatter::try_load(),
             is_sidebar_open: true,
             command_palette: ui::command_palette::CommandPalette::new(),
             tile_tree: egui_tiles::Tree::empty("workspace_tree"),

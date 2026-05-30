@@ -1,4 +1,4 @@
-use crate::{action, messages};
+use crate::{action, app, formatter, messages};
 use eframe::egui;
 
 type MsgMap = hashbrown::HashMap<u32, messages::ParsedMessage>;
@@ -26,6 +26,8 @@ impl ViewerTable {
         &mut self,
         ui: &mut egui::Ui,
         action_queue: &mut Vec<action::AppAction>,
+        formatter: &Option<formatter::Formatter>,
+        parser: Option<&app::ParserInfo>,
     ) -> egui_tiles::UiResponse {
         ui.heading(format!("🚗 {}", self.title));
         if ui
@@ -100,24 +102,28 @@ impl ViewerTable {
                     msg_keys.sort();
                     for msg_id in msg_keys {
                         let msg = &msgs[&msg_id];
+                        let msg_def = parser
+                            .as_ref()
+                            .map(|p| &p.parser)
+                            .and_then(|p| p.msg_def(msg_id));
                         let signals: Vec<(&str, String)> = msg
                             .decoded
                             .signals
                             .iter()
                             .map(|(sig_name, signal)| {
-                                if let Some(ref enum_label) = signal.value.enum_label {
-                                    (
-                                        sig_name.as_str(),
-                                        format!("{} ({})", enum_label, signal.value.int_rounded()),
-                                    )
-                                } else if signal.unit.is_empty() {
-                                    (sig_name.as_str(), format!("{:.2}", signal.value.physical))
-                                } else {
-                                    (
-                                        sig_name.as_str(),
-                                        format!("{:.2} {}", signal.value.physical, signal.unit),
-                                    )
-                                }
+                                let sig_def = msg_def
+                                    .and_then(|md| md.signals.iter().find(|s| s.name == *sig_name));
+                                (
+                                    sig_name.as_str(),
+                                    formatter::try_format(
+                                        formatter,
+                                        &msg.decoded.name,
+                                        sig_name,
+                                        sig_def,
+                                        Some(&signal.unit),
+                                        &signal.value,
+                                    ),
+                                )
                             })
                             .collect();
                         let raw_bytes_str = msg
