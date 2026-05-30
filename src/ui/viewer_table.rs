@@ -20,6 +20,16 @@ pub struct ViewerTable {
     tx_node: TxNodeSearch,
 }
 
+impl TxNodeSearch {
+    fn matches(&self, tx_node: &str) -> bool {
+        match self {
+            TxNodeSearch::Any => true,
+            TxNodeSearch::Unparsed => tx_node.to_lowercase() == "unparsed",
+            TxNodeSearch::Node(node) => tx_node.to_lowercase() == node.to_lowercase(),
+        }
+    }
+}
+
 impl ViewerTable {
     pub fn new(instance_num: usize) -> Self {
         Self {
@@ -126,6 +136,11 @@ impl ViewerTable {
                         let mut undecoded_msg_keys = undecoded
                             .iter()
                             .filter_map(|(&msg_id, msg)| {
+                                let tx_filter = matches!(self.tx_node, TxNodeSearch::Any | TxNodeSearch::Unparsed);
+                                if !tx_filter {
+                                    return None;
+                                }
+
                                 if self.search.is_empty()
                                     || format!("{:03X}", msg.msg_id)
                                         .to_lowercase()
@@ -167,6 +182,11 @@ impl ViewerTable {
                     let mut decoded_msg_keys = decoded
                         .iter()
                         .filter_map(|(&msg_id, msg)| {
+                            let tx_filter = self.tx_node.matches(&msg.decoded.tx_node);
+                            if !tx_filter {
+                                return None;
+                            }
+
                             if self.search.is_empty()
                                 || msg.decoded.name.to_lowercase().contains(&low_search)
                                 || format!("{:03X}", msg.decoded.msg_id)
