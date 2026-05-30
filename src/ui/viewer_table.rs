@@ -106,10 +106,18 @@ impl ViewerTable {
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut self.tx_node, TxNodeSearch::Any, "Any");
                             for tx_node in all_tx_nodes {
-                                ui.selectable_value(&mut self.tx_node, TxNodeSearch::Node(tx_node.clone()), tx_node);
+                                ui.selectable_value(
+                                    &mut self.tx_node,
+                                    TxNodeSearch::Node(tx_node.clone()),
+                                    tx_node,
+                                );
                             }
                             if !self.undecoded_msgs.get().is_empty() {
-                                ui.selectable_value(&mut self.tx_node, TxNodeSearch::Unparsed, "Unparsed");
+                                ui.selectable_value(
+                                    &mut self.tx_node,
+                                    TxNodeSearch::Unparsed,
+                                    "Unparsed",
+                                );
                             }
                         });
                 });
@@ -136,7 +144,10 @@ impl ViewerTable {
                         let mut undecoded_msg_keys = undecoded
                             .iter()
                             .filter_map(|(&msg_id, msg)| {
-                                let tx_filter = matches!(self.tx_node, TxNodeSearch::Any | TxNodeSearch::Unparsed);
+                                let tx_filter = matches!(
+                                    self.tx_node,
+                                    TxNodeSearch::Any | TxNodeSearch::Unparsed
+                                );
                                 if !tx_filter {
                                     return None;
                                 }
