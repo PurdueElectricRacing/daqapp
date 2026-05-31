@@ -1,5 +1,6 @@
 use crate::{can, connection, messages, util};
 use crate::daq_log_parse::parse::RawFrame;
+use crate::util::get_absolute_path_to;
 
 use std::fs::{File, OpenOptions, create_dir_all};
 use std::io::Write;
@@ -13,7 +14,7 @@ const BUS_LOAD_UPDATE_MS: u128 = 200;
 const LOG_FOLDER_PATH: &str = "logs";
 
 pub struct DaqLogger {
-    file: File,
+    file: Option<File>,
     buffer: Vec<RawFrame>,
     last_flush: Instant,
     start_time: Instant,
@@ -22,9 +23,12 @@ pub struct DaqLogger {
 
 impl DaqLogger {
     pub fn new() -> Self {
-        File::create("")
+        let path = get_absolute_path_to(LOG_FOLDER_PATH);
+        create_dir_all(path)
+            .expect("Failed to create logs directory");
+
         Self {
-            file: File::open,
+            file: None,
             buffer: Vec::with_capacity(10000),
             last_flush: Instant::now(),
             start_time: Instant::now(),
