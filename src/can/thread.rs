@@ -1,4 +1,6 @@
 use crate::{can, connection, messages, util};
+use crate::daq_log_parse::parse::RawFrame;
+
 use std::fs::{File, OpenOptions, create_dir_all};
 use std::io::Write;
 use std::time::Instant;
@@ -8,16 +10,10 @@ const NO_CONNECTION_SLEEP_MS: u64 = 200;
 const READ_RETRY_SLEEP_MS: u64 = 2;
 const BUS_LOAD_UPDATE_MS: u128 = 200;
 
-#[repr(C)]
-#[derive(Pod, Zeroable, Copy, Clone, Debug)]
-pub struct RawFrame {
-    pub ticks_ms: u32,
-    pub identity: u32,
-    pub data: [u8; 8],
-}
+const LOG_FOLDER_PATH: &str = "logs";
 
 pub struct DaqLogger {
-    file: Option<File>,
+    file: File,
     buffer: Vec<RawFrame>,
     last_flush: Instant,
     start_time: Instant,
@@ -26,8 +22,9 @@ pub struct DaqLogger {
 
 impl DaqLogger {
     pub fn new() -> Self {
+        File::create("")
         Self {
-            file: None,
+            file: File::open,
             buffer: Vec::with_capacity(10000),
             last_flush: Instant::now(),
             start_time: Instant::now(),
@@ -35,7 +32,7 @@ impl DaqLogger {
         }
     }
 
-    pub fn log_can2_frame(&mut self, frame: &slcan::Can2Frame, bus_id: u8) {
+    pub fn log_frame(&mut self, frame: &slcan::Can2Frame, bus_id: u8) {
         let (id, data) = match frame.id() {
             slcan::Id::Standard(sid) => {
                 let id = sid.as_raw() as u32;
@@ -44,38 +41,6 @@ impl DaqLogger {
             slcan::Id::Extended(eid) => {
                 let id = eid.as_raw() | 0x80000000;
                 (id, frame.data().unwrap_or(&[]))
-            }
-        };
-
-        let identity = if bus_id != 0 {
-            id | 0x40000000 
-        } else {
-            id
-        };
-
-        let mut data_array = [0u8; 8];
-        data_array[..data.len().min(8)].copy_from_slice(&data[..data.len().min(8)]);
-
-        let ticks_ms = self.start_time.elapsed().as_millis() as u32;
-
-        let raw_frame = RawFrame {
-            ticks_ms,
-            identity,
-            data: data_array,
-        };
-
-        self.add_frame(raw_frame);
-    }
-
-    pub fn log_canfd_frame(&mut self, frame: &slcan::CanFdFrame, bus_id: u8) {
-        let (id, data) = match frame.id() {
-            slcan::Id::Standard(sid) => {
-                let id = sid.as_raw() as u32;
-                (id, frame.data())
-            }
-            slcan::Id::Extended(eid) => {
-                let id = eid.as_raw() | 0x80000000;
-                (id, frame.data())
             }
         };
 
@@ -164,7 +129,6 @@ impl DaqLogger {
         if let Some(ref mut file) = self.file.take() {
             let _ = file.sync_all();
         }
-        log::info!("DAQ logging shut down");
     }
 }
 
@@ -306,6 +270,7 @@ pub fn start_can_thread(
                         );
                         None
                     };
+
                     if let Some(id) = id {
                         if let Some(can2_frame) = slcan::Can2Frame::new_data(id, &msg.msg_bytes) {
                             let frame = slcan::CanFrame::Can2(can2_frame);
@@ -468,9 +433,6 @@ pub fn start_can_thread(
                 }
             }
         }
-
-        // Cleanup on thread exit
-        daq_logger.shutdown();
         
         unreachable!("CAN thread should never exit on its own");
     })
