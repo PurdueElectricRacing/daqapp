@@ -124,3 +124,7 @@ pub fn get_absolute_path_to(path_segment: &str) -> PathBuf {
     path.push(path_segment);
     path
 }
+
+pub fn byte_to_bcd_format(val: u8) -> u8 {
+    ((val / 10) << 4) | (val % 10)
+}

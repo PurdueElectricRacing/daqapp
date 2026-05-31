@@ -1,13 +1,15 @@
-use crate::{can, connection, messages, util};
-use crate::daq_log_parse::parse::RawFrame;
-use crate::util::get_absolute_path_to;
 use crate::daq_log_parse::consts::{BUS_ID_MASK, IS_EID_MASK};
+use crate::daq_log_parse::parse::RawFrame;
+use crate::util::byte_to_bcd_format;
+use crate::util::get_absolute_path_to;
+use crate::{can, connection, messages, util};
+use chrono::{Datelike, Timelike};
 
-use std::path::PathBuf;
+use bytemuck::{Pod, Zeroable};
 use std::fs::{File, create_dir_all};
 use std::io::Write;
+use std::path::PathBuf;
 use std::time::Instant;
-use bytemuck::{Pod, Zeroable};
 
 const NO_CONNECTION_SLEEP_MS: u64 = 200;
 const READ_RETRY_SLEEP_MS: u64 = 2;
@@ -27,8 +29,7 @@ pub struct DaqLogger {
 impl DaqLogger {
     pub fn new() -> Self {
         let path = get_absolute_path_to(LOG_FOLDER_PATH);
-        create_dir_all(&path)
-            .expect("Failed to create logs directory");
+        create_dir_all(&path).expect("Failed to create logs directory");
 
         Self {
             file: None,
@@ -52,11 +53,7 @@ impl DaqLogger {
             }
         };
 
-        let frame_identity = if bus_id != 0 {
-            id | BUS_ID_MASK 
-        } else {
-            id
-        };
+        let frame_identity = if bus_id != 0 { id | BUS_ID_MASK } else { id };
 
         let mut data_array = [0u8; 8];
         data_array[..data.len().min(8)].copy_from_slice(&data[..data.len().min(8)]);
@@ -86,9 +83,17 @@ impl DaqLogger {
         }
 
         if self.file.is_none() {
+            let now = chrono::Local::now();
+            let year_bcd = byte_to_bcd_format((now.year() % 100) as u8);
+            let month_bcd = byte_to_bcd_format(now.month() as u8);
+            let day_bcd = byte_to_bcd_format(now.day() as u8);
+            let hour_bcd = byte_to_bcd_format(now.hour() as u8);
+            let min_bcd = byte_to_bcd_format(now.minute() as u8);
+            let sec_bcd = byte_to_bcd_format(now.second() as u8);
+
             let filename = format!(
-                "log-{}.log",
-                chrono::Local::now().format("%Y-%m-%d--%H-%M-%S")
+                "log-20{:02x}-{:02x}-{:02x}--{:02x}-{:02x}-{:02x}.log",
+                year_bcd, month_bcd, day_bcd, hour_bcd, min_bcd, sec_bcd
             );
 
             let file_path = self.folder_path.join(filename);
@@ -197,7 +202,6 @@ fn process_can_frame(frame: slcan::CanFrame, state: &can::state::State) -> usize
         }
     }
 }
-
 
 pub fn start_can_thread(
     can_to_ui_tx: std::sync::mpsc::Sender<messages::MsgFromCan>,
@@ -357,14 +361,13 @@ pub fn start_can_thread(
                     for frame in frames {
                         let data_bytes = process_can_frame(frame.clone(), &state);
                         state.bus_load_tracker.record_frame(data_bytes);
-                        
-                        // Log each frame (buffered, not flushed yet)
+
                         match &frame {
-                            slcan::CanFrame::Can2(f2) => daq_logger.log_can2_frame(f2, 0),
-                            slcan::CanFrame::CanFd(ffd) => daq_logger.log_canfd_frame(ffd, 0),
+                            slcan::CanFrame::Can2(f2) => daq_logger.log_frame(f2, 0),
+                            slcan::CanFrame::CanFd(_) => log::error!("CAN FD Message Could Not Be Logged"),
                         }
                     }
-                    
+
                     // Send bus load updates periodically
                     if state.last_bus_load_update.elapsed().as_millis() >= BUS_LOAD_UPDATE_MS {
                         state.bus_load_tracker.cleanup();
@@ -421,7 +424,7 @@ pub fn start_can_thread(
                 }
             }
         }
-        
+
         unreachable!("CAN thread should never exit on its own");
     })
 }
