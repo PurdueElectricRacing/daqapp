@@ -2,7 +2,8 @@ use crate::{can, connection, messages, util};
 use crate::daq_log_parse::parse::RawFrame;
 use crate::util::get_absolute_path_to;
 
-use std::fs::{File, OpenOptions, create_dir_all};
+use std::path::PathBuf;
+use std::fs::{File, create_dir_all};
 use std::io::Write;
 use std::time::Instant;
 use bytemuck::{Pod, Zeroable};
@@ -15,6 +16,7 @@ const LOG_FOLDER_PATH: &str = "logs";
 
 pub struct DaqLogger {
     file: Option<File>,
+    folder_path: PathBuf,
     buffer: Vec<RawFrame>,
     last_flush: Instant,
     start_time: Instant,
@@ -24,11 +26,12 @@ pub struct DaqLogger {
 impl DaqLogger {
     pub fn new() -> Self {
         let path = get_absolute_path_to(LOG_FOLDER_PATH);
-        create_dir_all(path)
+        create_dir_all(&path)
             .expect("Failed to create logs directory");
 
         Self {
             file: None,
+            folder_path: path,
             buffer: Vec::with_capacity(10000),
             last_flush: Instant::now(),
             start_time: Instant::now(),
@@ -82,33 +85,13 @@ impl DaqLogger {
         }
 
         if self.file.is_none() {
-            if let Err(e) = create_dir_all("./logs") {
-                log::error!("Failed to create logs directory: {}", e);
-                self.buffer.clear();
-                return;
-            }
-
             let filename = format!(
-                "./logs/daq_{}.log",
-                chrono::Local::now().format("%Y-%m-%d_%H-%M-%S")
+                "log-{}.log",
+                chrono::Local::now().format("%Y-%m-%d--%H-%M-%S")
             );
 
-            match OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(&filename)
-            {
-                Ok(f) => {
-                    self.file = Some(f);
-                    log::info!("Started DAQ logging to {}", filename);
-                }
-                Err(e) => {
-                    log::error!("Failed to create log file: {}", e);
-                    self.buffer.clear();
-                    return;
-                }
-            }
+            let file_path = self.folder_path.join(filename);
+            self.file = Some(File::create(file_path).expect("Failed to create log file"));
         }
 
         if let Some(ref mut file) = self.file {
