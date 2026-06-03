@@ -1,9 +1,11 @@
 use crate::daq_log_parse::consts::{BUS_ID_MASK, IS_EID_MASK};
+use crate::daq_log_parse::consts::{
+    BUS_LOAD_UPDATE_MS, LOG_FOLDER_PATH, LOG_FRAMES_MS, NO_CONNECTION_SLEEP_MS, READ_RETRY_SLEEP_MS,
+};
 use crate::daq_log_parse::parse::RawFrame;
 use crate::util::byte_to_bcd_format;
 use crate::util::get_absolute_path_to;
 use crate::{can, connection, messages, util};
-use crate::daq_log_parse::consts::{NO_CONNECTION_SLEEP_MS, READ_RETRY_SLEEP_MS, BUS_LOAD_UPDATE_MS, LOG_FRAMES_MS, LOG_FOLDER_PATH};
 
 use chrono::{Datelike, Timelike};
 use std::fs::{File, create_dir_all};
@@ -69,7 +71,9 @@ impl DaqLogger {
         self.buffer.push(frame);
 
         //Flush every 1 second
-        if self.buffer.len() >= self.buffer_capacity || self.last_flush.elapsed().as_millis() >= 1000 {
+        if self.buffer.len() >= self.buffer_capacity
+            || self.last_flush.elapsed().as_millis() >= 1000
+        {
             self.flush();
         }
     }
@@ -368,7 +372,9 @@ pub fn start_can_thread(
 
                         match &frame {
                             slcan::CanFrame::Can2(f2) => daq_logger.log_frame(f2, 0),
-                            slcan::CanFrame::CanFd(_) => log::error!("CAN FD Message Could Not Be Logged"),
+                            slcan::CanFrame::CanFd(_) => {
+                                log::error!("CAN FD Message Could Not Be Logged")
+                            }
                         }
                     }
 

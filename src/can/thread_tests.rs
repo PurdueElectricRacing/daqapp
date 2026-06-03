@@ -1,9 +1,9 @@
-use std::time::Instant;
-use crate::can::thread::{DaqLogger};
+use crate::can::thread::DaqLogger;
 use crate::daq_log_parse::consts::{BUS_ID_MASK, IS_EID_MASK, LOG_FRAMES_MS};
 use crate::daq_log_parse::parse::RawFrame;
 use std::fs;
 use std::path::PathBuf;
+use std::time::Instant;
 use tempfile::TempDir;
 
 // -------------------------------------------------------------------------
@@ -67,7 +67,8 @@ fn test_logging_and_parsing() {
     logger.flush();
 
     // simulate rotation by backdating file_created_at
-    logger.file_created_at = Instant::now() - std::time::Duration::from_millis((LOG_FRAMES_MS + 50) as u64);
+    logger.file_created_at =
+        Instant::now() - std::time::Duration::from_millis((LOG_FRAMES_MS + 50) as u64);
     std::thread::sleep(std::time::Duration::from_secs(1)); // ensure different filename
 
     let second_input_data = [0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09];
@@ -75,7 +76,8 @@ fn test_logging_and_parsing() {
     logger.log_frame(&frame_two, 0);
     logger.flush();
 
-    logger.file_created_at = Instant::now() - std::time::Duration::from_millis((LOG_FRAMES_MS + 50) as u64);
+    logger.file_created_at =
+        Instant::now() - std::time::Duration::from_millis((LOG_FRAMES_MS + 50) as u64);
     std::thread::sleep(std::time::Duration::from_secs(1));
 
     let third_input_data = [0xFF, 0xFA, 0xFB, 0x00, 0x00, 0x00, 0x00, 0x00];
@@ -238,7 +240,11 @@ fn log_frame_standard_id_no_eid_flag() {
 
     let frames = read_raw_frames(&first_log_file(&tmp));
     assert_eq!(frames.len(), 1);
-    assert_eq!(frames[0].identity & IS_EID_MASK, 0, "EID flag should not be set for standard frame");
+    assert_eq!(
+        frames[0].identity & IS_EID_MASK,
+        0,
+        "EID flag should not be set for standard frame"
+    );
 }
 
 #[test]
@@ -251,7 +257,11 @@ fn log_frame_extended_id_has_eid_flag() {
 
     let frames = read_raw_frames(&first_log_file(&tmp));
     assert_eq!(frames.len(), 1);
-    assert_ne!(frames[0].identity & IS_EID_MASK, 0, "EID flag should be set for extended frame");
+    assert_ne!(
+        frames[0].identity & IS_EID_MASK,
+        0,
+        "EID flag should be set for extended frame"
+    );
 }
 
 #[test]
@@ -263,7 +273,11 @@ fn log_frame_bus0_no_bus_id_flag() {
     logger.flush();
 
     let frames = read_raw_frames(&first_log_file(&tmp));
-    assert_eq!(frames[0].identity & BUS_ID_MASK, 0, "bus ID flag should be 0 for bus 0");
+    assert_eq!(
+        frames[0].identity & BUS_ID_MASK,
+        0,
+        "bus ID flag should be 0 for bus 0"
+    );
 }
 
 #[test]
@@ -275,7 +289,11 @@ fn log_frame_bus1_has_bus_id_flag() {
     logger.flush();
 
     let frames = read_raw_frames(&first_log_file(&tmp));
-    assert_ne!(frames[0].identity & BUS_ID_MASK, 0, "bus ID flag should be set for bus 1");
+    assert_ne!(
+        frames[0].identity & BUS_ID_MASK,
+        0,
+        "bus ID flag should be set for bus 1"
+    );
 }
 
 #[test]
@@ -355,7 +373,10 @@ fn log_frame_ticks_ms_is_non_negative() {
 
     let frames = read_raw_frames(&first_log_file(&tmp));
     // ticks_ms is u32, always >= 0, just verify it's sane (under 1 second for a fresh logger)
-    assert!(frames[0].ticks_ms < 1000, "ticks_ms should be under 1s for a fresh logger");
+    assert!(
+        frames[0].ticks_ms < 1000,
+        "ticks_ms should be under 1s for a fresh logger"
+    );
 }
 
 // -------------------------------------------------------------------------
@@ -445,7 +466,11 @@ fn shutdown_flushes_remaining_buffer() {
         .map(|e| e.path())
         .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("log"))
         .collect();
-    assert_eq!(files.len(), 1, "shutdown should have flushed and created a file");
+    assert_eq!(
+        files.len(),
+        1,
+        "shutdown should have flushed and created a file"
+    );
 }
 
 #[test]
@@ -484,14 +509,18 @@ fn raw_frame_size_is_16_bytes() {
 fn extended_and_bus1_flags_do_not_overlap() {
     // bit 31 = BUS_ID, bit 30 = IS_EID — they must be different bits
     assert_ne!(BUS_ID_MASK, IS_EID_MASK);
-    assert_eq!(BUS_ID_MASK & IS_EID_MASK, 0, "bus ID and EID flags must not share bits");
+    assert_eq!(
+        BUS_ID_MASK & IS_EID_MASK,
+        0,
+        "bus ID and EID flags must not share bits"
+    );
 }
 
 #[test]
 fn process_can_frame_standard_id_correctly_routes() {
     let tmp = TempDir::new().unwrap();
     let mut logger = make_logger(&tmp);
-    
+
     let frame = make_standard_frame(0x100, &[1, 2, 3, 4]);
     logger.log_frame(&frame, 0);
     logger.flush();
@@ -505,8 +534,8 @@ fn process_can_frame_standard_id_correctly_routes() {
 fn process_can_frame_fd_drops_out_gracefully() {
     let tmp = TempDir::new().unwrap();
     let mut logger = make_logger(&tmp);
-    
-    // Verifies that standard frame log paths completely ignore or isolate 
+
+    // Verifies that standard frame log paths completely ignore or isolate
     // CAN FD definitions if passed downstream.
     let frame = make_standard_frame(0x200, &[1, 2, 3, 4, 5, 6, 7, 8]);
     logger.log_frame(&frame, 0);
@@ -524,16 +553,16 @@ fn flush_renews_file_handle_after_time_threshold() {
     let frame = make_standard_frame(0x100, &[1]);
     logger.log_frame(&frame, 0);
     logger.flush();
-    
+
     let original_flush_time = logger.last_flush;
 
     std::thread::sleep(std::time::Duration::from_millis(1001));
-    
+
     let frame_two = make_standard_frame(0x200, &[2]);
     logger.log_frame(&frame_two, 0);
 
     assert!(
-        logger.last_flush > original_flush_time, 
+        logger.last_flush > original_flush_time,
         "Logic error: The logger did not update its internal last_flush timestamp!"
     );
 }
@@ -541,14 +570,17 @@ fn flush_renews_file_handle_after_time_threshold() {
 fn log_frame_calculates_accurate_monotonic_delta() {
     let tmp = TempDir::new().unwrap();
     let mut logger = make_logger(&tmp);
-    
+
     // Backdate the logger creation time 150ms into the past
     logger.start_time = std::time::Instant::now() - std::time::Duration::from_millis(150);
-    
+
     let frame = make_standard_frame(0x100, &[1]);
     logger.log_frame(&frame, 0);
-    
-    assert!(logger.buffer[0].ticks_ms >= 150, "Timestamp delta must reflect elapsed duration");
+
+    assert!(
+        logger.buffer[0].ticks_ms >= 150,
+        "Timestamp delta must reflect elapsed duration"
+    );
 }
 
 #[test]
@@ -566,22 +598,26 @@ fn log_frame_wipes_previous_buffer_remnants_in_padding() {
     let raw_short_frame = logger.buffer[1];
     assert_eq!(raw_short_frame.data[0], 0xAA);
     assert_eq!(raw_short_frame.data[1], 0xAA);
-    assert_eq!(&raw_short_frame.data[2..8], &[0u8; 6], "Trailing data from previous loops must be zeroed");
+    assert_eq!(
+        &raw_short_frame.data[2..8],
+        &[0u8; 6],
+        "Trailing data from previous loops must be zeroed"
+    );
 }
 
 #[test]
 fn log_frame_preserves_maximum_id_bounds() {
     let tmp = TempDir::new().unwrap();
     let mut logger = make_logger(&tmp);
-    
-    let max_ext_id: u32 = 0x1FFFFFFF; 
+
+    let max_ext_id: u32 = 0x1FFFFFFF;
     let frame = make_extended_frame(max_ext_id, &[1]);
-    
-    logger.log_frame(&frame, 1); 
+
+    logger.log_frame(&frame, 1);
     logger.flush();
 
     let frames = read_raw_frames(&first_log_file(&tmp));
-    
+
     assert_ne!(frames[0].identity & BUS_ID_MASK, 0);
     assert_ne!(frames[0].identity & IS_EID_MASK, 0);
     assert_eq!(frames[0].identity & 0x1FFFFFFF, max_ext_id);
@@ -598,7 +634,11 @@ fn logger_handles_high_density_stream_appends() {
         logger.log_frame(&frame, 0);
     }
 
-    assert_eq!(logger.buffer.len(), 3999, "Buffer must cleanly maintain thousands of un-flushed nodes");
+    assert_eq!(
+        logger.buffer.len(),
+        3999,
+        "Buffer must cleanly maintain thousands of un-flushed nodes"
+    );
 }
 
 #[test]
@@ -608,12 +648,16 @@ fn double_flush_is_idempotent_and_safe() {
 
     let frame = make_standard_frame(0x100, &[1]);
     logger.log_frame(&frame, 0);
-    
-    logger.flush(); 
+
+    logger.flush();
     let expected_file_state = logger.file.is_some();
-    
-    logger.flush(); 
-    assert_eq!(logger.file.is_some(), expected_file_state, "Secondary flush must not corrupt active handle state");
+
+    logger.flush();
+    assert_eq!(
+        logger.file.is_some(),
+        expected_file_state,
+        "Secondary flush must not corrupt active handle state"
+    );
 }
 
 #[test]
@@ -623,12 +667,18 @@ fn shutdown_drops_internal_file_ownership() {
 
     let frame = make_standard_frame(0x100, &[7]);
     logger.log_frame(&frame, 0);
-    
+
     assert!(logger.file.is_none());
     logger.shutdown();
-    
-    assert!(logger.file.is_none(), "Shutdown should clear its active internal File handle completely via take()");
-    assert!(logger.buffer.is_empty(), "Telemetry storage arrays must clear entirely post-shutdown");
+
+    assert!(
+        logger.file.is_none(),
+        "Shutdown should clear its active internal File handle completely via take()"
+    );
+    assert!(
+        logger.buffer.is_empty(),
+        "Telemetry storage arrays must clear entirely post-shutdown"
+    );
 }
 
 // -------------------------------------------------------------------------
@@ -645,7 +695,7 @@ fn test_logger_parser_round_trip() {
 
     let input_data = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
     let frame = make_standard_frame(0x5A1, &input_data);
-    
+
     logger.log_frame(&frame, 0);
     logger.flush();
     logger.shutdown(); // Release file locks cleanly
@@ -678,7 +728,11 @@ fn test_multiple_flushes_accumulate() {
     let log_file = first_log_file(&tmp);
     let parsed_frames = read_raw_frames(&log_file);
 
-    assert_eq!(parsed_frames.len(), 2, "File should append data across distinct flushes");
+    assert_eq!(
+        parsed_frames.len(),
+        2,
+        "File should append data across distinct flushes"
+    );
     assert_eq!(parsed_frames[0].identity & 0x7FF, 0x100);
     assert_eq!(parsed_frames[1].identity & 0x7FF, 0x200);
 }
@@ -691,12 +745,12 @@ fn test_ticks_ms_increases_monotonically() {
     let mut logger = make_logger(&tmp);
 
     let frame = make_standard_frame(0x100, &[1]);
-    
+
     logger.log_frame(&frame, 0);
     // Force an artificial time delay on our host processor
     std::thread::sleep(std::time::Duration::from_millis(5));
     logger.log_frame(&frame, 0);
-    
+
     logger.flush();
     logger.shutdown();
 
@@ -733,8 +787,16 @@ fn test_extended_and_bus_1_simultaneous() {
     let identity = parsed_frames[0].identity;
 
     assert_ne!(identity & IS_EID_MASK, 0, "Extended ID flag mask was lost");
-    assert_ne!(identity & BUS_ID_MASK, 0, "Bus ID selection flag mask was lost");
-    assert_eq!(identity & 0x1FFFFFFF, 0x1FFF_FFFF, "Payload message tracking ID corrupted");
+    assert_ne!(
+        identity & BUS_ID_MASK,
+        0,
+        "Bus ID selection flag mask was lost"
+    );
+    assert_eq!(
+        identity & 0x1FFFFFFF,
+        0x1FFF_FFFF,
+        "Payload message tracking ID corrupted"
+    );
 }
 
 #[test]
@@ -749,7 +811,8 @@ fn test_file_rotation_on_time_boundary() {
     assert!(logger.file.is_some());
 
     // backdate file_created_at to simulate 1 minute passing
-    logger.file_created_at = Instant::now() - std::time::Duration::from_millis((LOG_FRAMES_MS + 50) as u64);
+    logger.file_created_at =
+        Instant::now() - std::time::Duration::from_millis((LOG_FRAMES_MS + 50) as u64);
 
     std::thread::sleep(std::time::Duration::from_secs(1));
 
@@ -764,5 +827,9 @@ fn test_file_rotation_on_time_boundary() {
         .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("log"))
         .collect();
 
-    assert_eq!(files.len(), 2, "Expected 2 distinct log files after rotation");
+    assert_eq!(
+        files.len(),
+        2,
+        "Expected 2 distinct log files after rotation"
+    );
 }
