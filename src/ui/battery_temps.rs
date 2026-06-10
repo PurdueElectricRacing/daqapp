@@ -91,6 +91,11 @@ impl BatteryTemps {
         let stale = self.is_data_stale;
         let elapsed = self.last_update.elapsed().as_secs_f64();
 
+		let temp_min = self.modules.iter().flatten().map(|c| c.temperature).fold(f64::MAX, f64::min);
+		let temp_max = self.modules.iter().flatten().map(|c| c.temperature).fold(f64::MIN, f64::max);
+		let temp_avg = self.modules.iter().flatten().map(|c| c.temperature).sum::<f64>() / (self.modules.len() as f64 * self.modules[0].len() as f64);
+		let temp_range = temp_max - temp_min;
+
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.add_space(4.0);
             ui.heading(&self.title);
@@ -130,6 +135,37 @@ impl BatteryTemps {
             }
 
             ui.add_space(8.0);
+
+			ui.label(
+                RichText::new("PACK SUMMARY")
+                    .size(10.0)
+                    .color(theme.text_color().linear_multiply(0.5)),
+            );
+            ui.add_space(4.0);
+
+            ui.columns(4, |cols| {
+                Self::stat_card(&mut cols[0], &theme, "TEMP AVG", Some(temp_avg), "°C", stale, None);
+                Self::stat_card(&mut cols[1], &theme, "TEMP MAX", Some(temp_max), "°C", stale, None);
+                Self::stat_card(&mut cols[2], &theme, "TEMP MIN", Some(temp_min), "°C", stale, None);
+                Self::stat_card(
+                    &mut cols[3],
+                    &theme,
+                    "TEMP RANGE",
+                    Some(temp_range),
+                    "°C",
+                    stale,
+					Some(if temp_range > 10.0 {
+						theme.error_color()
+					} else if temp_range > 5.0 {
+						theme.warning_color()
+					} else {
+						theme.success_color()
+					})
+                );
+            });
+
+            ui.add_space(12.0);
+
 
             for (mi, module) in self.modules.iter().enumerate() {
                 let mod_avg: f64 = module.iter().map(|c| c.temperature).sum::<f64>()
@@ -182,6 +218,56 @@ impl BatteryTemps {
         });
 
         egui_tiles::UiResponse::None
+    }
+
+	fn stat_card(
+        ui: &mut egui::Ui,
+        theme: &ui::theme::ThemeColors,
+        label: &str,
+        value: Option<f64>,
+        unit: &str,
+        stale: bool,
+        override_color: Option<Color32>,
+    ) {
+        Frame::NONE
+            .fill(theme.panel_color())
+            .stroke(Stroke::new(1.0, theme.accent_color()))
+            .inner_margin(egui::Margin::same(10))
+            .corner_radius(egui::CornerRadius::same(4))
+            .show(ui, |ui| {
+                ui.set_min_width(ui.available_width());
+                ui.vertical(|ui| {
+                    ui.label(
+                        RichText::new(label)
+                            .size(10.0)
+                            .color(theme.text_color().linear_multiply(0.5)),
+                    );
+                    ui.add_space(2.0);
+                    let val_color = override_color.unwrap_or(theme.info_color());
+                    if stale {
+                        ui.label(
+                            RichText::new("—")
+                                .size(20.0)
+                                .color(theme.text_color().linear_multiply(0.25)),
+                        );
+                    } else {
+                        ui.label(
+                            RichText::new(if let Some(v) = value {
+                                format!("{:.2}", v)
+                            } else {
+                                "—".to_string()
+                            })
+                            .size(20.0)
+                            .color(val_color),
+                        );
+                        ui.label(
+                            RichText::new(unit)
+                                .size(10.0)
+                                .color(theme.text_color().linear_multiply(0.4)),
+                        );
+                    }
+                });
+            });
     }
 
     fn temp_bar(
