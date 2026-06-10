@@ -2,7 +2,6 @@ use super::common::{self, BatteryUiState};
 use crate::{messages, ui, util};
 use eframe::egui::{self, Color32, Frame, RichText, Stroke};
 
-
 const T_MIN: f64 = 23.0;
 const T_MAX: f64 = 60.0;
 const T_NOM: f64 = 37.0;
@@ -38,7 +37,10 @@ impl BatteryTemps {
     pub fn new(instance_num: usize) -> Self {
         Self {
             title: format!("Battery Temps #{}", instance_num),
-            modules: vec![vec![ThermistorTemperature::default(); common::THERMISTORS_PER_MODULE]; common::NUM_MODULES],
+            modules: vec![
+                vec![ThermistorTemperature::default(); common::THERMISTORS_PER_MODULE];
+                common::NUM_MODULES
+            ],
             ui_state: BatteryUiState::new(),
         }
     }
@@ -148,8 +150,14 @@ impl BatteryTemps {
 
             for (module_index, module) in self.modules.iter().enumerate() {
                 let module_sum: f64 = module.iter().map(|cell| cell.temperature).sum();
-                let module_min = module.iter().map(|cell| cell.temperature).fold(f64::MAX, f64::min);
-                let module_max = module.iter().map(|cell| cell.temperature).fold(f64::MIN, f64::max);
+                let module_min = module
+                    .iter()
+                    .map(|cell| cell.temperature)
+                    .fold(f64::MAX, f64::min);
+                let module_max = module
+                    .iter()
+                    .map(|cell| cell.temperature)
+                    .fold(f64::MIN, f64::max);
                 let module_avg = module_sum / module.len() as f64;
 
                 Frame::NONE
@@ -187,8 +195,8 @@ impl BatteryTemps {
                         let available_width = ui.available_width();
                         let cell_spacing = ui.spacing().item_spacing.x;
                         let cell_count = common::THERMISTORS_PER_MODULE as f32;
-                        let bar_width = ((available_width - cell_spacing * cell_count) / cell_count)
-                            .max(8.0);
+                        let bar_width =
+                            ((available_width - cell_spacing * cell_count) / cell_count).max(8.0);
 
                         ui.horizontal(|ui| {
                             for cell in module.iter() {

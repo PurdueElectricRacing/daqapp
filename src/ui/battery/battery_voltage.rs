@@ -51,7 +51,10 @@ impl BatteryVoltage {
     pub fn new(instance_num: usize) -> Self {
         Self {
             title: format!("Battery Voltage #{}", instance_num),
-            modules: vec![vec![CellVoltage::default(); common::CELLS_PER_MODULE]; common::NUM_MODULES],
+            modules: vec![
+                vec![CellVoltage::default(); common::CELLS_PER_MODULE];
+                common::NUM_MODULES
+            ],
             charging_telemetry: None,
             ui_state: BatteryUiState::new(),
         }
@@ -183,8 +186,14 @@ impl BatteryVoltage {
 
             for (module_index, module) in self.modules.iter().enumerate() {
                 let module_sum: f64 = module.iter().map(|cell| cell.voltage).sum();
-                let module_min = module.iter().map(|cell| cell.voltage).fold(f64::MAX, f64::min);
-                let module_max = module.iter().map(|cell| cell.voltage).fold(f64::MIN, f64::max);
+                let module_min = module
+                    .iter()
+                    .map(|cell| cell.voltage)
+                    .fold(f64::MAX, f64::min);
+                let module_max = module
+                    .iter()
+                    .map(|cell| cell.voltage)
+                    .fold(f64::MIN, f64::max);
                 let module_delta = if module_min < f64::MAX {
                     module_max - module_min
                 } else {
@@ -237,8 +246,8 @@ impl BatteryVoltage {
                         let available_width = ui.available_width();
                         let cell_spacing = ui.spacing().item_spacing.x;
                         let cell_count = common::CELLS_PER_MODULE as f32;
-                        let bar_width = ((available_width - cell_spacing * cell_count) / cell_count)
-                            .max(8.0);
+                        let bar_width =
+                            ((available_width - cell_spacing * cell_count) / cell_count).max(8.0);
 
                         ui.horizontal(|ui| {
                             for cell in module.iter() {

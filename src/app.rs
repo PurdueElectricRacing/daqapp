@@ -195,7 +195,9 @@ impl DAQApp {
                         widgets::Widget::BusLoad(ui::bus_load::BusLoad::new(self.next_bus_load_num))
                     }
                     action::WidgetType::BatteryVoltage => widgets::Widget::BatteryVoltage(
-                        ui::battery::battery_voltage::BatteryVoltage::new(self.next_battery_voltage_num),
+                        ui::battery::battery_voltage::BatteryVoltage::new(
+                            self.next_battery_voltage_num,
+                        ),
                     ),
                     action::WidgetType::BatteryTemps => widgets::Widget::BatteryTemps(
                         ui::battery::battery_temps::BatteryTemps::new(self.next_battery_temps_num),

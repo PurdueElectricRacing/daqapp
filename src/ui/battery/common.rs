@@ -33,12 +33,7 @@ impl BatteryUiState {
     }
 }
 
-pub fn stale_banner(
-    ui: &mut egui::Ui,
-    theme: &ThemeColors,
-    stale: bool,
-    elapsed: f64,
-) {
+pub fn stale_banner(ui: &mut egui::Ui, theme: &ThemeColors, stale: bool, elapsed: f64) {
     let (bg, dot, text) = if stale {
         let c = theme.warning_color();
         (
@@ -62,7 +57,8 @@ pub fn stale_banner(
         .corner_radius(egui::CornerRadius::same(4))
         .show(ui, |ui| {
             ui.horizontal(|ui| {
-                let (rect, _) = ui.allocate_exact_size(egui::Vec2::splat(8.0), egui::Sense::hover());
+                let (rect, _) =
+                    ui.allocate_exact_size(egui::Vec2::splat(8.0), egui::Sense::hover());
                 ui.painter().circle_filled(rect.center(), 4.0, dot);
                 ui.add_space(4.0);
                 ui.colored_label(dot, &text);
