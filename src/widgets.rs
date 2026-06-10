@@ -9,8 +9,8 @@ pub enum Widget {
     LogParser(ui::log_parser::LogParser),
     SendUi(ui::send::SendUi),
     BusLoad(ui::bus_load::BusLoad),
-    BatteryVoltage(ui::battery_voltage::BatteryVoltage),
-    BatteryTemps(ui::battery_temps::BatteryTemps),
+    BatteryVoltage(ui::battery::battery_voltage::BatteryVoltage),
+    BatteryTemps(ui::battery::battery_temps::BatteryTemps),
     GgPlot(ui::gg_plot::GgPlot),
     Dynamics(ui::dynamics::Dynamics),
     Jitter(ui::jitter::Jitter),
@@ -40,7 +40,7 @@ impl Widget {
         can_messages: &[messages::MsgFromCan],
         action_queue: &mut Vec<action::AppAction>,
         parser: Option<&app::ParserInfo>,
-        ui_to_can_tx: std::sync::mpsc::Sender<messages::MsgFromUi>,
+        _ui_to_can_tx: std::sync::mpsc::Sender<messages::MsgFromUi>,
         formatter: &Option<formatter::Formatter>,
     ) -> egui_tiles::UiResponse {
         let mut received_new_data = false;
