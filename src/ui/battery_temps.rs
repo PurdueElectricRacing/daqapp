@@ -20,16 +20,16 @@ impl TempData {
         let temp = self.temperature.clamp(T_MIN, T_MAX);
 
         // Piecewise interpolate hue
-		let hue = if temp <= T_NOM {
-			// T_MIN -> T_NOM maps 120° -> 45°
-			let t = (temp - T_MIN) / (T_NOM - T_MIN);
-			util::lerp(120.0, 45.0, t)
-		} else {
-			// T_NOM -> T_MAX maps 45° -> 0°
-			let t = (temp - T_NOM) / (T_MAX - T_NOM);
-			util::lerp(45.0, 0.0, t)
-		};
-		
+        let hue = if temp <= T_NOM {
+            // T_MIN -> T_NOM maps 120° -> 45°
+            let t = (temp - T_MIN) / (T_NOM - T_MIN);
+            util::lerp(120.0, 45.0, t)
+        } else {
+            // T_NOM -> T_MAX maps 45° -> 0°
+            let t = (temp - T_NOM) / (T_MAX - T_NOM);
+            util::lerp(45.0, 0.0, t)
+        };
+
         util::hsv_to_color32(hue, 1.0, 1.0)
     }
 }
@@ -55,32 +55,31 @@ impl BatteryTemps {
 
     pub fn handle_can_message(&mut self, msg: &messages::MsgFromCan) {
         if let messages::MsgFromCan::ParsedMessage(parsed) = msg
-            && parsed.decoded.name.as_str() == "thermistor_telemetry_ccan" {
-                let mut module_num: Option<usize> = None;
-                let mut thermistor_num: Option<usize> = None;
-                let mut temperature: Option<f64> = None;
+            && parsed.decoded.name.as_str() == "thermistor_telemetry_ccan"
+        {
+            let mut module_num: Option<usize> = None;
+            let mut thermistor_num: Option<usize> = None;
+            let mut temperature: Option<f64> = None;
 
-                for (_, sig) in parsed.decoded.signals.iter() {
-                    match sig.name.as_str() {
-                        "module_num" => module_num = Some(sig.value.physical.round() as usize),
-                        "thermistor_num" => {
-                            thermistor_num = Some(sig.value.physical.round() as usize)
-                        }
-                        "temperature" => temperature = Some(sig.value.physical),
-                        _ => {}
-                    }
+            for (_, sig) in parsed.decoded.signals.iter() {
+                match sig.name.as_str() {
+                    "module_num" => module_num = Some(sig.value.physical.round() as usize),
+                    "thermistor_num" => thermistor_num = Some(sig.value.physical.round() as usize),
+                    "temperature" => temperature = Some(sig.value.physical),
+                    _ => {}
                 }
-
-                if let (Some(m), Some(t), Some(temp)) = (module_num, thermistor_num, temperature)
-                    && m < self.modules.len()
-                    && t < self.modules[m].len()
-                {
-                    self.modules[m][t].temperature = temp;
-                }
-
-                self.last_update = std::time::Instant::now();
-                self.is_data_stale = false;
             }
+
+            if let (Some(m), Some(t), Some(temp)) = (module_num, thermistor_num, temperature)
+                && m < self.modules.len()
+                && t < self.modules[m].len()
+            {
+                self.modules[m][t].temperature = temp;
+            }
+
+            self.last_update = std::time::Instant::now();
+            self.is_data_stale = false;
+        }
     }
 
     pub fn show(&mut self, ui: &mut egui::Ui) -> egui_tiles::UiResponse {
@@ -91,10 +90,26 @@ impl BatteryTemps {
         let stale = self.is_data_stale;
         let elapsed = self.last_update.elapsed().as_secs_f64();
 
-		let temp_min = self.modules.iter().flatten().map(|c| c.temperature).fold(f64::MAX, f64::min);
-		let temp_max = self.modules.iter().flatten().map(|c| c.temperature).fold(f64::MIN, f64::max);
-		let temp_avg = self.modules.iter().flatten().map(|c| c.temperature).sum::<f64>() / (self.modules.len() as f64 * self.modules[0].len() as f64);
-		let temp_range = temp_max - temp_min;
+        let temp_min = self
+            .modules
+            .iter()
+            .flatten()
+            .map(|c| c.temperature)
+            .fold(f64::MAX, f64::min);
+        let temp_max = self
+            .modules
+            .iter()
+            .flatten()
+            .map(|c| c.temperature)
+            .fold(f64::MIN, f64::max);
+        let temp_avg = self
+            .modules
+            .iter()
+            .flatten()
+            .map(|c| c.temperature)
+            .sum::<f64>()
+            / (self.modules.len() as f64 * self.modules[0].len() as f64);
+        let temp_range = temp_max - temp_min;
 
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.add_space(4.0);
@@ -136,7 +151,7 @@ impl BatteryTemps {
 
             ui.add_space(8.0);
 
-			ui.label(
+            ui.label(
                 RichText::new("PACK SUMMARY")
                     .size(10.0)
                     .color(theme.text_color().linear_multiply(0.5)),
@@ -144,9 +159,33 @@ impl BatteryTemps {
             ui.add_space(4.0);
 
             ui.columns(4, |cols| {
-                Self::stat_card(&mut cols[0], &theme, "TEMP AVG", Some(temp_avg), "°C", stale, None);
-                Self::stat_card(&mut cols[1], &theme, "TEMP MAX", Some(temp_max), "°C", stale, None);
-                Self::stat_card(&mut cols[2], &theme, "TEMP MIN", Some(temp_min), "°C", stale, None);
+                Self::stat_card(
+                    &mut cols[0],
+                    &theme,
+                    "TEMP AVG",
+                    Some(temp_avg),
+                    "°C",
+                    stale,
+                    None,
+                );
+                Self::stat_card(
+                    &mut cols[1],
+                    &theme,
+                    "TEMP MAX",
+                    Some(temp_max),
+                    "°C",
+                    stale,
+                    None,
+                );
+                Self::stat_card(
+                    &mut cols[2],
+                    &theme,
+                    "TEMP MIN",
+                    Some(temp_min),
+                    "°C",
+                    stale,
+                    None,
+                );
                 Self::stat_card(
                     &mut cols[3],
                     &theme,
@@ -154,24 +193,29 @@ impl BatteryTemps {
                     Some(temp_range),
                     "°C",
                     stale,
-					Some(if temp_range > 10.0 {
-						theme.error_color()
-					} else if temp_range > 5.0 {
-						theme.warning_color()
-					} else {
-						theme.success_color()
-					})
+                    Some(if temp_range > 10.0 {
+                        theme.error_color()
+                    } else if temp_range > 5.0 {
+                        theme.warning_color()
+                    } else {
+                        theme.success_color()
+                    }),
                 );
             });
 
             ui.add_space(12.0);
 
-
             for (mi, module) in self.modules.iter().enumerate() {
-                let mod_avg: f64 = module.iter().map(|c| c.temperature).sum::<f64>()
-                    / (module.len() as f64);
-                let mod_min = module.iter().map(|c| c.temperature).fold(f64::MAX, f64::min);
-                let mod_max = module.iter().map(|c| c.temperature).fold(f64::MIN, f64::max);
+                let mod_avg: f64 =
+                    module.iter().map(|c| c.temperature).sum::<f64>() / (module.len() as f64);
+                let mod_min = module
+                    .iter()
+                    .map(|c| c.temperature)
+                    .fold(f64::MAX, f64::min);
+                let mod_max = module
+                    .iter()
+                    .map(|c| c.temperature)
+                    .fold(f64::MIN, f64::max);
 
                 Frame::NONE
                     .fill(theme.panel_color())
@@ -220,7 +264,7 @@ impl BatteryTemps {
         egui_tiles::UiResponse::None
     }
 
-	fn stat_card(
+    fn stat_card(
         ui: &mut egui::Ui,
         theme: &ui::theme::ThemeColors,
         label: &str,
