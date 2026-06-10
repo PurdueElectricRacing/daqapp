@@ -47,7 +47,8 @@ impl BatteryTemps {
 
     pub fn handle_can_message(&mut self, msg: &messages::MsgFromCan) {
         if let messages::MsgFromCan::ParsedMessage(parsed) = msg
-            && parsed.decoded.name.as_str() == "thermistor_telemetry_ccan"
+            && (parsed.decoded.name.as_str() == "thermistor_telemetry_ccan"
+                || parsed.decoded.name.as_str() == "thermistor_telemetry")
         {
             let mut module_num: Option<usize> = None;
             let mut thermistor_num: Option<usize> = None;
