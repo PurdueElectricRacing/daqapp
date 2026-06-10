@@ -9,11 +9,11 @@ const V_NOM: f64 = 3.7;
 const STALE_TIMEOUT_SECONDS: u64 = 1;
 
 #[derive(Default, Clone)]
-pub struct CellData {
+pub struct CellVoltage {
     pub voltage: f64,
     pub balancing: bool,
 }
-impl CellData {
+impl CellVoltage {
     pub fn color(&self) -> Color32 {
         // Blue override for discharge
         if self.balancing {
@@ -39,28 +39,27 @@ impl CellData {
 }
 
 #[derive(Default)]
-struct ChargingTelemetry {
+struct ChargingVoltageTelemetry {
     pack_voltage: f64,
     pack_current: f64,
     min_cell_voltage: f64,
     max_cell_voltage: f64,
 }
-
-pub struct BatteryViewer {
+pub struct BatteryVoltage {
     pub title: String,
 
-    modules: Vec<Vec<CellData>>, // [module_idx][cell_idx]
-    charging_telemetry: Option<ChargingTelemetry>,
+    modules: Vec<Vec<CellVoltage>>, // [module_idx][cell_idx]
+    charging_telemetry: Option<ChargingVoltageTelemetry>,
 
     last_update: std::time::Instant,
     is_data_stale: bool,
 }
 
-impl BatteryViewer {
+impl BatteryVoltage {
     pub fn new(instance_num: usize) -> Self {
         Self {
-            title: format!("Battery Viewer #{}", instance_num),
-            modules: vec![vec![CellData::default(); CELLS_PER_MODULE]; NUM_MODULES],
+            title: format!("Battery Voltage #{}", instance_num),
+            modules: vec![vec![CellVoltage::default(); CELLS_PER_MODULE]; NUM_MODULES],
             charging_telemetry: None,
             last_update: std::time::Instant::now() - std::time::Duration::from_secs(10),
             is_data_stale: true,
@@ -357,7 +356,7 @@ impl BatteryViewer {
     fn cell_bar(
         ui: &mut egui::Ui,
         theme: &ui::theme::ThemeColors,
-        cell: &CellData,
+        cell: &CellVoltage,
         stale: bool,
         bar_w: f32,
     ) {
