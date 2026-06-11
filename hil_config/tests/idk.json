@@ -1,4 +1,6 @@
 {
+	"$schema": "../schema.json",
+
 	"name": "Pack sanity check",
 	"description": "Verify thermistor response",
 
