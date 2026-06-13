@@ -4,7 +4,8 @@ pub enum ExpectResult {
     NotInWindow,
     InProgress,
     Passed,
-    Failed,
+    FailedNoMessage,
+    FailedValueOutOfRange,
 }
 
 pub struct InProgressExpect {
@@ -35,8 +36,18 @@ impl ExpectResult {
             ExpectResult::NotInWindow => "Not in window",
             ExpectResult::InProgress => "In progress",
             ExpectResult::Passed => "Passed",
-            ExpectResult::Failed => "Failed",
+            ExpectResult::FailedNoMessage => "Failed (no message)",
+            ExpectResult::FailedValueOutOfRange => "Failed (value out of range)",
         }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        matches!(
+            self,
+            ExpectResult::Passed
+                | ExpectResult::FailedNoMessage
+                | ExpectResult::FailedValueOutOfRange
+        )
     }
 }
 
@@ -67,7 +78,7 @@ impl HilRunningTest {
             match expect.result {
                 ExpectResult::NotInWindow => not_in_window += 1,
                 ExpectResult::InProgress => in_progress += 1,
-                ExpectResult::Passed | ExpectResult::Failed => completed += 1,
+                _ => completed += 1,
             }
         }
 
