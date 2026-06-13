@@ -44,6 +44,8 @@ impl Hil {
     }
 
     fn try_start_from_test(&mut self, test: &hil::config::TestInfo) {
+        self.start_error = None;
+
         let test = match hil::run::HilRunningTest::new(test) {
             Ok(test) => test,
             Err(err) => {
@@ -60,6 +62,8 @@ impl Hil {
     }
 
     fn try_start_from_preset(&mut self, preset: &hil::config::PresetInfo) {
+        self.start_error = None;
+
         let mut tests = Vec::new();
         for test_name in &preset.tests {
             let test_info = match self.found_tests.iter().find(|t| t.basename == *test_name) {
