@@ -111,6 +111,12 @@ impl Hil {
                     }
                     ui.separator();
                 }
+
+                if let Some(err) = &self.start_error {
+                    ui.colored_label(egui::Color32::RED, err);
+                    ui.separator();
+                }
+
                 if !self.found_presets.is_empty() {
                     ui.label("Presets:");
                     let mut selected_preset = None;
