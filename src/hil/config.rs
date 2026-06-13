@@ -39,6 +39,7 @@ pub struct Expectation {
     pub signals: HashMap<String, [f64; 2]>,
 }
 
+#[derive(Clone)]
 pub struct PresetInfo {
     pub name: String,
     // base names

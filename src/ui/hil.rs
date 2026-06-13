@@ -49,6 +49,36 @@ impl Hil {
         };
     }
 
+    fn try_start_from_preset(&mut self, preset: &hil::config::PresetInfo) {
+        let mut tests = Vec::new();
+        for test_name in &preset.tests {
+            let test_info = match self.found_tests.iter().find(|t| t.basename == *test_name) {
+                Some(info) => info,
+                None => {
+                    self.start_error = Some(format!(
+                        "Error starting preset: Test '{}' not found",
+                        test_name
+                    ));
+                    return;
+                }
+            };
+            let test = match hil::run::HilRunningTest::new(test_info) {
+                Ok(test) => test,
+                Err(err) => {
+                    self.start_error = Some(format!("Error starting preset: {}", err));
+                    return;
+                }
+            };
+            tests.push(test);
+        }
+
+        self.hil_state = hil::run::HilState::Running {
+            start_time: std::time::Instant::now(),
+            preset_name: Some(preset.name.clone()),
+            tests,
+        };
+    }
+
     pub fn show(&mut self, ui: &mut egui::Ui) -> egui_tiles::UiResponse {
         egui::ScrollArea::vertical().show(ui, |ui| match &mut self.hil_state {
             hil::run::HilState::Idle => {
@@ -66,15 +96,15 @@ impl Hil {
                 }
                 if !self.found_presets.is_empty() {
                     ui.label("Presets:");
+                    let mut selected_preset = None;
                     for preset in &self.found_presets {
                         let preset_info = format!("{} - {}", preset.name, preset.tests.join(", "));
                         if ui.button(&preset_info).clicked() {
-                            self.hil_state = hil::run::HilState::Running {
-                                start_time: std::time::Instant::now(),
-                                preset_name: Some(preset.name.clone()),
-                                tests: Vec::new(),
-                            };
+                            selected_preset = Some(preset.clone());
                         }
+                    }
+                    if let Some(preset) = selected_preset {
+                        self.try_start_from_preset(&preset);
                     }
                     ui.separator();
                 }

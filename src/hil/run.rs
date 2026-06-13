@@ -36,14 +36,16 @@ impl HilRunningTest {
             name: test_info.name.clone(),
             description: test_info.description.clone(),
             tx_remaining: test.tx,
-            in_progress_expects: test
-                .expect
-                .into_iter()
-                .map(|expect| InProgressExpect {
-                    expect,
-                    result: ExpectResult::NotInWindow,
-                })
-                .collect(),
+            in_progress_expects: test.expect.into_iter().map(InProgressExpect::new).collect(),
         })
+    }
+}
+
+impl InProgressExpect {
+    pub fn new(expect: hil::config::Expectation) -> Self {
+        Self {
+            expect,
+            result: ExpectResult::NotInWindow,
+        }
     }
 }
