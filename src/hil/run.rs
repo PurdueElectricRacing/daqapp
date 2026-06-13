@@ -71,8 +71,7 @@ impl HilRunningTest {
             .into_iter()
             .map(InProgressExpect::new)
             .collect::<Vec<_>>();
-        in_progress_expects
-            .sort_by(|a, b| a.expect.window[0].partial_cmp(&b.expect.window[0]).unwrap());
+        in_progress_expects.sort_by(|a, b| a.expect.window[0].total_cmp(&b.expect.window[0]));
         Ok(Self {
             test_info: test_info.clone(),
             tx_remaining: test.tx,
