@@ -1,4 +1,4 @@
-use crate::{hil, messages, ui};
+use crate::{hil, messages};
 use eframe::egui;
 
 pub struct Hil {
