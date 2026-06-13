@@ -82,6 +82,7 @@ pub fn list_available_tests() -> (Vec<PresetInfo>, Vec<TestInfo>, Vec<String>) {
     } else {
         errors.push(format!("Failed to read tests directory: {}", TESTS_FOLDER));
     }
+    individual_tests.sort_by(|a, b| a.basename.to_lowercase().cmp(&b.basename.to_lowercase()));
 
     // Load presets
     let mut presets = Vec::new();
@@ -127,6 +128,7 @@ pub fn list_available_tests() -> (Vec<PresetInfo>, Vec<TestInfo>, Vec<String>) {
     } else {
         errors.push(format!("Failed to read presets file: {}", PRESETS_FILE));
     }
+    presets.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
 
     (presets, individual_tests, errors)
 }
