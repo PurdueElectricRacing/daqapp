@@ -130,8 +130,8 @@ impl Hil {
             } => {
                 let time_since_start = start_time.elapsed().as_secs_f64();
                 ui.label(format!(
-                    "HIL is running... {:.2} seconds since start",
-                    time_since_start
+                    "HIL is running... {:.0} ms since start",
+                    time_since_start * 1000.0
                 ));
                 ui.separator();
 
@@ -157,15 +157,17 @@ impl Hil {
                     ));
 
                     for ipe in &test.in_progress_expects {
-                        let status = ipe.result.as_str();
                         ui.label(format!(
-                            "Expect: {} [{} - {}] - {}",
-                            ipe.expect.msg_name, ipe.expect.window[0], ipe.expect.window[1], status
+                            "Expect: {} [{} - {} ms] - {}",
+                            ipe.expect.msg_name,
+                            ipe.expect.window[0],
+                            ipe.expect.window[1],
+                            ipe.result.as_str()
                         ));
-                        for (sig_name, sig_window) in &ipe.expect.signals {
+                        for (sig_name, sig_range) in &ipe.expect.signals {
                             ui.label(format!(
-                                "  Signal: {} [{} - {}]",
-                                sig_name, sig_window[0], sig_window[1]
+                                "  Signal: {} [{} - {} value]",
+                                sig_name, sig_range[0], sig_range[1]
                             ));
                         }
                     }
