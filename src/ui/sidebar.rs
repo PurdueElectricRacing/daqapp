@@ -271,7 +271,8 @@ pub fn show(app: &mut app::DAQApp, ctx: &egui::Context) {
                     }
                 }
 
-                let log_display = app.log_folder
+                let log_display = app
+                    .log_folder
                     .as_deref()
                     .unwrap_or(std::path::Path::new(can::daq_logger::LOG_FOLDER_PATH));
                 ui.label(format!("{}", log_display.display()));
