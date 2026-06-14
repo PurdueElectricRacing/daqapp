@@ -62,6 +62,7 @@ pub struct DAQApp {
     pub can_bus_speed: connection::CanBusSpeed,
     pub udp_port: u16,
     pub can_messages: Vec<messages::MsgFromCan>,
+    pub log_folder: Option<std::path::PathBuf>
 }
 
 impl DAQApp {
@@ -73,6 +74,7 @@ impl DAQApp {
             udp_port: self.udp_port,
             theme: self.theme_selection,
             pixels_per_point: self.pixels_per_point,
+            log_folder: self.log_folder.clone(),
         };
         settings.save();
     }
@@ -117,6 +119,7 @@ impl DAQApp {
             can_bus_speed: settings.selected_speed,
             udp_port: settings.udp_port,
             can_messages: Vec::new(),
+            log_folder: settings.log_folder,
         }
     }
 

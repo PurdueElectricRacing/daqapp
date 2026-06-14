@@ -1,146 +1,11 @@
-use crate::daq_log_parse::consts::{BUS_ID_MASK, IS_EID_MASK};
-use crate::daq_log_parse::consts::{
-    BUS_LOAD_UPDATE_MS, LOG_FOLDER_PATH, LOG_FRAMES_MS, NO_CONNECTION_SLEEP_MS, READ_RETRY_SLEEP_MS,
-};
-use crate::daq_log_parse::parse::RawFrame;
-use crate::util::byte_to_bcd_format;
-use crate::util::get_absolute_path_to;
 use crate::{can, connection, messages, util};
 
-use chrono::{Datelike, Timelike};
-use std::fs::{File, create_dir_all};
-use std::io::Write;
-use std::path::PathBuf;
-use std::time::Instant;
-
-pub struct DaqLogger {
-    pub(crate) file: Option<File>,
-    pub(crate) folder_path: PathBuf,
-    pub(crate) buffer: Vec<RawFrame>,
-    pub(crate) file_created_at: Instant,
-    pub(crate) start_time: Instant,
-    pub(crate) last_flush: Instant,
-    pub(crate) buffer_capacity: usize,
-}
-
-impl DaqLogger {
-    pub fn new() -> Self {
-        let path = get_absolute_path_to(LOG_FOLDER_PATH);
-        create_dir_all(&path).expect("Failed to create logs directory");
-
-        Self {
-            file: None,
-            folder_path: path,
-            buffer: Vec::with_capacity(10000),
-            file_created_at: Instant::now(),
-            start_time: Instant::now(),
-            last_flush: Instant::now(),
-            buffer_capacity: 5000,
-        }
-    }
-
-    pub fn log_frame(&mut self, frame: &slcan::Can2Frame, bus_id: u8) {
-        let (id, data) = match frame.id() {
-            slcan::Id::Standard(sid) => {
-                let id = sid.as_raw() as u32;
-                (id, frame.data().unwrap_or(&[]))
-            }
-            slcan::Id::Extended(eid) => {
-                let id = eid.as_raw() | IS_EID_MASK;
-                (id, frame.data().unwrap_or(&[]))
-            }
-        };
-
-        let frame_identity = if bus_id != 0 { id | BUS_ID_MASK } else { id };
-
-        let mut data_array = [0u8; 8];
-        data_array[..data.len().min(8)].copy_from_slice(&data[..data.len().min(8)]);
-
-        let ticks_ms = self.start_time.elapsed().as_millis() as u32;
-
-        let raw_frame = RawFrame {
-            ticks_ms: ticks_ms,
-            identity: frame_identity,
-            data: data_array,
-        };
-
-        self.add_frame(raw_frame);
-    }
-
-    fn add_frame(&mut self, frame: RawFrame) {
-        self.buffer.push(frame);
-
-        //Flush every 1 second
-        if self.buffer.len() >= self.buffer_capacity
-            || self.last_flush.elapsed().as_millis() >= 1000
-        {
-            self.flush();
-        }
-    }
-
-    pub fn flush(&mut self) {
-        if self.buffer.is_empty() {
-            return;
-        }
-
-        // Create new file if time of creation has exceed threshold
-        if self.file.is_some() && self.file_created_at.elapsed().as_millis() >= LOG_FRAMES_MS {
-            self.file = None;
-        }
-
-        if self.file.is_none() {
-            let now = chrono::Local::now();
-            self.file_created_at = Instant::now();
-
-            let year_bcd = byte_to_bcd_format((now.year() % 100) as u8);
-            let month_bcd = byte_to_bcd_format(now.month() as u8);
-            let day_bcd = byte_to_bcd_format(now.day() as u8);
-            let hour_bcd = byte_to_bcd_format(now.hour() as u8);
-            let min_bcd = byte_to_bcd_format(now.minute() as u8);
-            let sec_bcd = byte_to_bcd_format(now.second() as u8);
-
-            let filename = format!(
-                "log-20{:02x}-{:02x}-{:02x}--{:02x}-{:02x}-{:02x}.log",
-                year_bcd, month_bcd, day_bcd, hour_bcd, min_bcd, sec_bcd
-            );
-
-            let file_path = self.folder_path.join(filename);
-            self.file = Some(File::create(file_path).expect("Failed to create log file"));
-        }
-
-        if let Some(ref mut file) = self.file {
-            for frame in &self.buffer {
-                if let Err(e) = file.write_all(bytemuck::bytes_of(frame)) {
-                    log::error!("Failed to write to log file: {}", e);
-                    break;
-                }
-            }
-
-            if let Err(e) = file.flush() {
-                log::error!("Failed to flush log file: {}", e);
-            }
-        }
-
-        self.buffer.clear();
-        self.last_flush = Instant::now();
-    }
-
-    pub fn shutdown(&mut self) {
-        self.flush();
-        if let Some(ref mut file) = self.file.take() {
-            let _ = file.sync_all();
-        }
-    }
-}
-
-impl Drop for DaqLogger {
-    fn drop(&mut self) {
-        self.shutdown();
-    }
-}
+pub const NO_CONNECTION_SLEEP_MS: u64 = 200;
+pub const READ_RETRY_SLEEP_MS: u64 = 2;
+pub const BUS_LOAD_UPDATE_MS: u128 = 200;
 
 // Returns the number of payload data bytes in the CAN frame if it was a Can2 frame
-fn process_can_frame(frame: slcan::CanFrame, state: &can::state::State) -> usize {
+fn process_can_frame(frame: &slcan::CanFrame, state: &can::state::State) -> usize {
     match frame {
         slcan::CanFrame::Can2(frame2) => {
             let decode_msg_id = util::can::slcan_to_u32_with_extid_flag(&frame2.id());
@@ -200,13 +65,7 @@ fn process_can_frame(frame: slcan::CanFrame, state: &can::state::State) -> usize
         }
 
         slcan::CanFrame::CanFd(frame_fd) => {
-            let msg_id_raw = util::can::slcan_to_u32_without_extid_flag(&frame_fd.id());
-            log::warn!(
-                "Received CAN FD frame id=0x{:X} len={}",
-                msg_id_raw,
-                frame_fd.data().len()
-            );
-            frame_fd.data().len()
+           frame_fd.data().len()
         }
     }
 }
@@ -215,10 +74,11 @@ pub fn start_can_thread(
     can_to_ui_tx: std::sync::mpsc::Sender<messages::MsgFromCan>,
     ui_to_can_rx: std::sync::mpsc::Receiver<messages::MsgFromUi>,
     selected_source: Option<connection::ConnectionSource>,
+    log_folder: Option<std::path::PathBuf>
 ) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
         let mut state = can::state::State::new(can_to_ui_tx, ui_to_can_rx, selected_source);
-        let mut daq_logger = DaqLogger::new();
+        let mut daq_logger = can::daq_logger::DaqLogger::new(log_folder);
 
         // MAIN LOOP
         loop {
@@ -367,7 +227,7 @@ pub fn start_can_thread(
             match active_driver.read_frames() {
                 Ok(frames) => {
                     for frame in frames {
-                        let data_bytes = process_can_frame(frame.clone(), &state);
+                        let data_bytes = process_can_frame(&frame, &state);
                         state.bus_load_tracker.record_frame(data_bytes);
 
                         match &frame {
