@@ -64,9 +64,7 @@ fn process_can_frame(frame: &slcan::CanFrame, state: &can::state::State) -> usiz
             data.len()
         }
 
-        slcan::CanFrame::CanFd(frame_fd) => {
-           frame_fd.data().len()
-        }
+        slcan::CanFrame::CanFd(frame_fd) => frame_fd.data().len(),
     }
 }
 
@@ -74,7 +72,7 @@ pub fn start_can_thread(
     can_to_ui_tx: std::sync::mpsc::Sender<messages::MsgFromCan>,
     ui_to_can_rx: std::sync::mpsc::Receiver<messages::MsgFromUi>,
     selected_source: Option<connection::ConnectionSource>,
-    log_folder: Option<std::path::PathBuf>
+    log_folder: Option<std::path::PathBuf>,
 ) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
         let mut state = can::state::State::new(can_to_ui_tx, ui_to_can_rx, selected_source);

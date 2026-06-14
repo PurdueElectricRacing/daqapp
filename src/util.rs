@@ -113,11 +113,12 @@ pub fn get_absolute_path_to(path_segment: &str) -> PathBuf {
     }
 
     if let Ok(exe_path) = env::current_exe()
-        && let Some(exe_dir) = exe_path.parent() {
-            let mut path = PathBuf::from(exe_dir);
-            path.push(path_segment);
-            return path;
-        }
+        && let Some(exe_dir) = exe_path.parent()
+    {
+        let mut path = PathBuf::from(exe_dir);
+        path.push(path_segment);
+        return path;
+    }
 
     let mut path = PathBuf::from(".");
     path.push(path_segment);

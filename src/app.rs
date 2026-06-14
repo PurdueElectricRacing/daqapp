@@ -62,7 +62,7 @@ pub struct DAQApp {
     pub can_bus_speed: connection::CanBusSpeed,
     pub udp_port: u16,
     pub can_messages: Vec<messages::MsgFromCan>,
-    pub log_folder: Option<std::path::PathBuf>
+    pub log_folder: Option<std::path::PathBuf>,
 }
 
 impl DAQApp {

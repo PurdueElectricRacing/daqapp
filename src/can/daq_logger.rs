@@ -1,9 +1,7 @@
-use crate::daq_log_parse::consts::{
-    BUS_ID_MASK, IS_EID_MASK
-};
+use crate::daq_log_parse::consts::{BUS_ID_MASK, IS_EID_MASK};
 
 use crate::daq_log_parse::parse::RawFrame;
-use crate::util::{get_absolute_path_to};
+use crate::util::get_absolute_path_to;
 
 use chrono::{Datelike, Timelike};
 use std::fs::{File, create_dir_all};
@@ -30,13 +28,12 @@ pub struct DaqLogger {
 
 impl DaqLogger {
     pub fn new(folder_path: Option<std::path::PathBuf>) -> Self {
-        let path = folder_path
-            .unwrap_or_else(|| get_absolute_path_to(LOG_FOLDER_PATH));
-        
+        let path = folder_path.unwrap_or_else(|| get_absolute_path_to(LOG_FOLDER_PATH));
+
         if let Err(e) = create_dir_all(&path) {
             log::error!("Failed to create directory for logs: {:?}: {}", path, e);
         }
-       
+
         Self {
             file: None,
             folder_path: path,

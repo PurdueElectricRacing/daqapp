@@ -7,7 +7,6 @@ pub enum ConnectionSource {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Copy, Clone, PartialEq, Debug)]
-
 #[derive(Default)]
 pub enum CanBusSpeed {
     Kbps250,
@@ -60,4 +59,3 @@ impl CanBusSpeed {
         vec![CanBusSpeed::Kbps250, CanBusSpeed::Kbps500]
     }
 }
-
