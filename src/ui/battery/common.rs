@@ -2,7 +2,7 @@ use crate::ui::theme::ThemeColors;
 use eframe::egui::{self, Color32, Frame, RichText, Stroke};
 use std::time::{Duration, Instant};
 
-pub const NUM_MODULES: usize = 8;
+pub const NUM_MODULES: usize = 7;
 pub const CELLS_PER_MODULE: usize = 16;
 pub const THERMISTORS_PER_MODULE: usize = 10;
 

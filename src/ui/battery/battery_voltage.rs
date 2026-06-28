@@ -218,17 +218,17 @@ impl BatteryVoltage {
                                     .color(theme.text_color().linear_multiply(0.55)),
                             );
                             ui.label(
-                                RichText::new(format!("min {:.3} V", module_min))
+                                RichText::new(format!("min {:.2} V", module_min))
                                     .size(10.0)
                                     .color(theme.text_color().linear_multiply(0.55)),
                             );
                             ui.label(
-                                RichText::new(format!("max {:.3} V", module_max))
+                                RichText::new(format!("max {:.2} V", module_max))
                                     .size(10.0)
                                     .color(theme.text_color().linear_multiply(0.55)),
                             );
                             ui.label(
-                                RichText::new(format!("Δ {:.3} V", module_delta))
+                                RichText::new(format!("Δ {:.2} V", module_delta))
                                     .size(10.0)
                                     .color(if module_delta > 0.050 {
                                         theme.error_color()

@@ -2,9 +2,9 @@ use super::common::{self, BatteryUiState};
 use crate::{messages, ui, util};
 use eframe::egui::{self, Color32, Frame, RichText, Stroke};
 
-const T_MIN: f64 = 23.0;
-const T_MAX: f64 = 60.0;
-const T_NOM: f64 = 37.0;
+const T_MIN: f64 = 15.0;
+const T_MAX: f64 = 45.0;
+const T_NOM: f64 = 25.0;
 
 #[derive(Default, Clone)]
 pub struct ThermistorTemperature {
@@ -105,8 +105,8 @@ impl BatteryTemps {
                 common::stat_card(
                     &mut cols[0],
                     &theme,
-                    "TEMP AVG",
-                    Some(temp_avg),
+                    "TEMP MIN",
+                    Some(temp_min),
                     "°C",
                     stale,
                     None,
@@ -114,8 +114,8 @@ impl BatteryTemps {
                 common::stat_card(
                     &mut cols[1],
                     &theme,
-                    "TEMP MAX",
-                    Some(temp_max),
+                    "TEMP AVG",
+                    Some(temp_avg),
                     "°C",
                     stale,
                     None,
@@ -123,8 +123,8 @@ impl BatteryTemps {
                 common::stat_card(
                     &mut cols[2],
                     &theme,
-                    "TEMP MIN",
-                    Some(temp_min),
+                    "TEMP MAX",
+                    Some(temp_max),
                     "°C",
                     stale,
                     None,
